@@ -63,6 +63,9 @@ class Subscriber(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     openid = Column(String(128), unique=True, nullable=False, index=True)
 
+    # QQ Bot 绑定
+    qq_openid = Column(String(128), unique=True, nullable=True, index=True)
+
     # 用户信息（从微信 OAuth 获取）
     nickname = Column(String(64), default='')
     avatar_url = Column(String(256), default='')
@@ -153,6 +156,17 @@ class Notification(Base):
     content = Column(Text, default='')
     subscriber_id = Column(Integer, nullable=True)
     is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# ===== QQ 绑定码 =====
+
+class QQBindCode(Base):
+    __tablename__ = 'qq_bind_codes'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    qq_openid = Column(String(128), nullable=False, index=True)
+    code = Column(String(8), nullable=False, unique=True, index=True)
+    used = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

@@ -16,13 +16,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 import httpx
 
-from app.models import get_db, Subscriber, ChatConversation, Plan, SubscriberStatus
+from app.models import get_db, Subscriber, ChatConversation, Plan, SubscriberStatus, QQBindCode
+from app.services.ai import ai_chat
 
 router = APIRouter()
 
 WECHAT_TOKEN = os.getenv('WECHAT_TOKEN', 'xiaolongxia_wechat_2026')
-DEEPSEEK_KEY = os.getenv('DEEPSEEK_API_KEY', '')
-DEEPSEEK_URL = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com') + '/v1/chat/completions'
 PRODUCT_URL = os.getenv('BASE_URL', 'http://xkx.pangoozn.com')
 
 
@@ -43,32 +42,6 @@ def build_text(to_user: str, from_user: str, content: str) -> str:
 </xml>"""
 
 
-async def ai_chat(nickname: str, messages: list, user_msg: str) -> str:
-    """AI 回复"""
-    if not DEEPSEEK_KEY:
-        return '服务暂不可用。'
-
-    system = (
-        f'你是{nickname}的私人AI秘书"享客虾"。友好、贴心、高效。'
-        f'回复简洁实用，200字以内。直接给答案，不废话。'
-    )
-    ctx = [{'role': 'system', 'content': system}]
-    for m in (messages or [])[-10:]:
-        ctx.append({'role': m.get('role', 'user'), 'content': m.get('content', '')[:500]})
-    ctx.append({'role': 'user', 'content': user_msg[:2000]})
-
-    try:
-        async with httpx.AsyncClient(timeout=25) as c:
-            r = await c.post(DEEPSEEK_URL,
-                headers={'Authorization': f'Bearer {DEEPSEEK_KEY}', 'Content-Type': 'application/json'},
-                json={'model': 'deepseek-chat', 'messages': ctx, 'max_tokens': 500, 'temperature': 0.7})
-            if r.status_code == 200:
-                return r.json()['choices'][0]['message']['content'].strip()
-            return '（响应失败，请再试一次）'
-    except Exception:
-        return '（网络波动，请再发一次）'
-
-
 async def check_quota(sub: Subscriber, db: AsyncSession):
     """月度配额重置"""
     today = date.today()
@@ -78,17 +51,18 @@ async def check_quota(sub: Subscriber, db: AsyncSession):
         await db.commit()
 
 
+# 微信通道专用文案（含 HTML <a> 链接）
 NOT_SUBSCRIBED_MSG = (
     '🦞 嗨！我是**享客虾**，你的私人AI秘书。\n\n'
     '📱 开通后即可开始对话：\n'
     '🥉 基础版 · ¥9.9/月 · 500条\n'
     '🥈 标准版 · ¥19.9/月 · 2000条\n\n'
-    '👉 <a href="{url}">点击开通享客虾</a>'
+    '👉 <a href=\"{url}\">点击开通享客虾</a>'
 ).replace('{url}', PRODUCT_URL)
 
 QUOTA_EXHAUSTED_MSG = (
     '🦞 本月 {limit} 条额度已用完。\n\n'
-    '👉 <a href="{url}">续费或升级套餐</a>'
+    '👉 <a href=\"{url}\">续费或升级套餐</a>'
 ).replace('{url}', PRODUCT_URL)
 
 
@@ -124,6 +98,38 @@ async def callback(request: Request, db: AsyncSession = Depends(get_db)):
         # 快捷指令
         if content in ('开通', '升级', '套餐', '续费'):
             return PlainTextResponse(build_text(from_user, to_user, NOT_SUBSCRIBED_MSG))
+
+        # 绑定 QQ 机器人
+        if content.startswith('绑定 ') or content.startswith('绑定'):
+            code = content.replace('绑定', '').strip()
+            if code and len(code) == 6 and code.isdigit():
+                result = await db.execute(
+                    select(QQBindCode).where(
+                        QQBindCode.code == code,
+                        QQBindCode.used == False,
+                    )
+                )
+                bind = result.scalar_one_or_none()
+                if bind:
+                    # 更新当前用户的 qq_openid
+                    sub = (await db.execute(
+                        select(Subscriber).where(Subscriber.openid == from_user)
+                    )).scalar_one_or_none()
+                    if sub:
+                        sub.qq_openid = bind.qq_openid
+                        bind.used = True
+                        await db.commit()
+                        return PlainTextResponse(build_text(from_user, to_user,
+                            '✅ QQ 绑定成功！现在可以在 QQ 上和享客虾聊天了。'))
+                    else:
+                        return PlainTextResponse(build_text(from_user, to_user,
+                            '请先在微信中开通享客虾。'))
+                else:
+                    return PlainTextResponse(build_text(from_user, to_user,
+                        '绑定码无效或已过期，请在 QQ 中重新获取。'))
+            else:
+                return PlainTextResponse(build_text(from_user, to_user,
+                    '请发送「绑定 + 6位数字码」，例如：绑定 123456\n在 QQ 中和享客虾对话即可获取绑定码。'))
 
         # 找订阅用户
         result = await db.execute(

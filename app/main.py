@@ -3,6 +3,7 @@
 个人AI秘书 · 微信原生 · 订阅制 · 微信支付
 """
 import os
+import asyncio
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -21,6 +22,7 @@ from app.routes.pay import router as pay_router
 from app.routes.auth import router as auth_router
 from app.routes.menu import router as menu_router
 from app.scheduler import start_scheduler
+from app.bot.qqbot import run_qq_bot
 
 
 @asynccontextmanager
@@ -40,6 +42,11 @@ async def lifespan(app: FastAPI):
             print(f"[享客虾] 已填充 {len(SEED_PLANS)} 个套餐")
 
     start_scheduler()
+
+    # 启动 QQ Bot（后台任务，不影响微信主服务）
+    if os.getenv('QQ_BOT_APPID'):
+        asyncio.create_task(run_qq_bot())
+        print('[享客虾] QQ Bot 后台任务已启动')
 
     yield
     print("[享客虾] 服务停止")
