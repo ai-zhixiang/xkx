@@ -2,80 +2,117 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <base href="/xkx/">
 <title>享客虾 · 管理后台</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,'PingFang SC','Microsoft YaHei',sans-serif;background:#F5F3F0;color:#2C2C2C;min-height:100vh}
-.sidebar{position:fixed;top:0;left:0;width:200px;height:100vh;background:linear-gradient(180deg,#D3543A,#A93226);color:#fff;z-index:10;display:flex;flex-direction:column}
-.sidebar .logo{padding:20px 16px;font-size:20px;font-weight:700;border-bottom:1px solid rgba(255,255,255,.1)}
-.sidebar .logo small{display:block;font-size:10px;font-weight:400;opacity:.6;margin-top:2px}
-.sidebar nav{flex:1;padding:10px 0}
-.sidebar nav a{display:flex;align-items:center;gap:8px;padding:12px 20px;color:rgba(255,255,255,.7);text-decoration:none;font-size:14px;transition:all .15s;cursor:pointer}
-.sidebar nav a:hover{background:rgba(255,255,255,.08);color:#fff}
-.sidebar nav a.active{background:rgba(255,255,255,.12);color:#fff;font-weight:600;border-right:3px solid #F39C12}
-.main{margin-left:200px;min-height:100vh}
-.top-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:#fff;border-bottom:1px solid rgba(178,155,125,.12)}
-.top-bar h1{font-size:17px;font-weight:600}
-.top-bar .badge{font-size:10px;padding:3px 10px;border-radius:10px;background:rgba(211,84,58,.08);color:#D3543A}
-.content{padding:20px 24px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px}
-.stat-card{background:#fff;border-radius:10px;padding:14px;border:1px solid rgba(178,155,125,.08)}
-.stat-card .num{font-size:22px;font-weight:700;color:#D3543A}
-.stat-card .label{font-size:11px;color:#888;margin-top:2px}
+body{font-family:system-ui,'PingFang SC','Microsoft YaHei',sans-serif;background:#F2F0ED;color:#2C2C2C;min-height:100vh;padding-bottom:24px}
+
+/* Top Bar */
+.top-bar{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.top-bar .logo{font-size:16px;font-weight:700}
+.top-bar .ver{font-size:10px;opacity:.5}
+.top-bar .badge{font-size:10px;padding:3px 8px;border-radius:8px;background:rgba(255,255,255,.15)}
+
+/* Tab Nav — horizontal scroll */
+.tabs{display:flex;gap:2px;background:#fff;overflow-x:auto;padding:6px 8px;border-bottom:1px solid #eee;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+.tabs span{flex-shrink:0;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:500;color:#888;cursor:pointer;white-space:nowrap;transition:all .15s}
+.tabs span.active{background:rgba(192,57,43,.08);color:#C0392B;font-weight:600}
+
+/* Content */
+.content{padding:12px 10px}
+
+/* Stats — 2 columns */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-card{background:#fff;border-radius:12px;padding:14px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.stat-card .num{font-size:24px;font-weight:700;color:#C0392B;line-height:1.2}
+.stat-card .label{font-size:11px;color:#999;margin-top:2px}
 .stat-card.warn .num{color:#E67E22}
 .stat-card.good .num{color:#27AE60}
-.section{background:#fff;border-radius:10px;border:1px solid rgba(178,155,125,.08);margin-bottom:16px}
-.section-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(178,155,125,.08)}
-.section-header h2{font-size:14px;font-weight:600}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th{text-align:left;padding:8px 12px;color:#888;font-weight:500;border-bottom:1px solid rgba(178,155,125,.06)}
-td{padding:8px 12px;border-bottom:1px solid rgba(178,155,125,.04)}
-tr:hover td{background:rgba(211,84,58,.02)}
-.badge-status{display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:500}
-.s-active{background:rgba(39,174,96,.08);color:#27AE60}
-.s-trial{background:rgba(52,152,219,.08);color:#2980B9}
-.s-expired{background:rgba(231,76,60,.08);color:#C0392B}
-.btn{padding:5px 12px;border-radius:7px;font-size:11px;font-weight:500;border:none;cursor:pointer;font-family:inherit}
-.btn-primary{background:linear-gradient(135deg,#D3543A,#C0392B);color:#fff}
-.btn-sm{padding:3px 8px;font-size:10px}
-.btn-warn{border:1px solid rgba(231,76,60,.3);color:#C0392B;background:transparent}
-.empty{padding:30px;text-align:center;color:#aaa;font-size:13px}
-.tab-nav{display:flex;gap:4px;margin-bottom:12px}
-.tab-nav span{padding:5px 12px;border-radius:7px;font-size:11px;cursor:pointer;color:#888}
-.tab-nav span.active{background:rgba(211,84,58,.08);color:#D3543A;font-weight:500}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:999;background:#2C2C2C;color:#fff;padding:10px 24px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none}
+
+/* Section */
+.section{background:#fff;border-radius:12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden}
+.section-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #f0f0f0}
+.section-hd h2{font-size:14px;font-weight:600}
+
+/* User cards — mobile friendly */
+.user-list{display:flex;flex-direction:column;gap:1px;background:#f0f0f0}
+.user-card{padding:14px;background:#fff;display:flex;flex-direction:column;gap:8px}
+.user-card .uc-top{display:flex;justify-content:space-between;align-items:flex-start}
+.user-card .uc-name{font-size:14px;font-weight:600}
+.user-card .uc-id{font-size:10px;color:#aaa}
+.user-card .uc-meta{display:flex;gap:12px;font-size:11px;color:#666}
+.user-card .uc-meta b{color:#333}
+.user-card .uc-actions{display:flex;gap:8px}
+.user-card .uc-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:500}
+.uc-active{background:rgba(39,174,96,.08);color:#27AE60}
+.uc-expired{background:rgba(231,76,60,.08);color:#C0392B}
+
+/* Order cards */
+.order-list{display:flex;flex-direction:column;gap:1px;background:#f0f0f0}
+.order-card{padding:12px 14px;background:#fff;display:flex;justify-content:space-between;align-items:center}
+.order-card .ol-left{font-size:12px}
+.order-card .ol-right{text-align:right}
+.order-card .ol-amount{font-size:15px;font-weight:700;color:#C0392B}
+.order-card .ol-status{font-size:10px;padding:2px 6px;border-radius:4px}
+.os-paid{background:rgba(39,174,96,.08);color:#27AE60}
+.os-pending{background:rgba(230,126,34,.08);color:#E67E22}
+.order-card .ol-meta{font-size:10px;color:#aaa;margin-top:2px}
+
+/* Plan cards */
+.plan-list{display:flex;flex-direction:column;gap:1px;background:#f0f0f0}
+.plan-card{padding:12px 14px;background:#fff;display:flex;justify-content:space-between;align-items:center}
+.plan-card .pl-info{font-size:13px}
+.plan-card .pl-info small{color:#aaa;font-size:10px;display:block}
+.plan-card .pl-price{font-size:16px;font-weight:700;color:#C0392B}
+
+/* Buttons — touch-friendly */
+.btn{display:inline-block;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;border:none;cursor:pointer;font-family:inherit;min-height:36px;min-width:44px;text-align:center}
+.btn:active{opacity:.8;transform:scale(.96)}
+.btn-primary{background:#C0392B;color:#fff}
+.btn-warn{background:transparent;border:1px solid rgba(192,57,43,.3);color:#C0392B}
+.btn-green{background:#27AE60;color:#fff}
+.btn-sm{padding:4px 10px;font-size:11px;min-height:30px}
+
+/* Tab filter pills */
+.filters{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 10px}
+.filters span{padding:4px 12px;border-radius:12px;font-size:11px;color:#888;background:#f5f5f5;cursor:pointer}
+.filters span.active{background:rgba(192,57,43,.08);color:#C0392B;font-weight:500}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:999;background:#2C2C2C;color:#fff;padding:10px 24px;border-radius:24px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
-input{border:1px solid #ddd;border-radius:7px;padding:6px 10px;font-size:12px;outline:none;font-family:inherit}
-input:focus{border-color:#D3543A}
+
+/* Quick link */
+.quick-link{display:block;padding:14px;text-align:center;color:#C0392B;font-size:13px;text-decoration:none;font-weight:500}
+.quick-link:active{background:rgba(192,57,43,.04)}
+
+.empty{padding:40px 14px;text-align:center;color:#bbb;font-size:13px}
 </style>
 </head>
 <body>
 
-<div class="sidebar">
-  <div class="logo">🦞 享客虾<small>个人AI秘书平台</small></div>
-  <nav>
-    <a class="active" onclick="switchTab('dashboard')">📊 总览</a>
-    <a onclick="switchTab('subscribers')">👤 用户管理</a>
-    <a onclick="switchTab('orders')">📋 订单</a>
-    <a onclick="switchTab('plans')">📦 套餐</a>
-  </nav>
-  <div style="padding:14px 16px;font-size:10px;opacity:.4;border-top:1px solid rgba(255,255,255,.08)">v0.1 · 个人版</div>
+<div class="top-bar">
+  <div><span class="logo">🦞 享客虾</span><span class="ver"> v0.1</span></div>
+  <span class="badge" id="statusBadge">加载中</span>
 </div>
 
-<div class="main">
-  <div class="top-bar">
-    <h1 id="pageTitle">📊 总览</h1>
-    <span class="badge" id="statusBadge">加载中</span>
-  </div>
-  <div class="content" id="tabContent"></div>
+<div class="tabs">
+  <span class="active" onclick="switchTab('dashboard')">📊 总览</span>
+  <span onclick="switchTab('subscribers')">👤 用户</span>
+  <span onclick="switchTab('orders')">📋 订单</span>
+  <span onclick="switchTab('plans')">📦 套餐</span>
 </div>
+
+<div class="content" id="tabContent"></div>
 
 <div class="toast" id="toast"></div>
 
 <script>
 const TOKEN = btoa('admin:admin888');
+const _TABS = {'dashboard':'📊 总览','subscribers':'👤 用户','orders':'📋 订单','plans':'📦 套餐'};
 
 async function api(path, opts={}){
   const res = await fetch('api/admin'+path, {
@@ -88,11 +125,8 @@ async function api(path, opts={}){
 function $(id){return document.getElementById(id)}
 
 async function switchTab(tab){
-  document.querySelectorAll('.sidebar nav a').forEach(a=>a.classList.remove('active'));
+  document.querySelectorAll('.tabs span').forEach(s=>s.classList.remove('active'));
   document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
-    const tabs = {'dashboard':'📊 总览','subscribers':'👤 用户','orders':'📋 订单','plans':'📦 套餐'};
-    $('pageTitle').textContent = tabs[tab]||tab;
-
   if(tab==='dashboard') await loadDashboard();
   if(tab==='subscribers') await loadSubscribers();
   if(tab==='orders') await loadOrders();
@@ -102,52 +136,59 @@ async function switchTab(tab){
 async function loadDashboard(){
   const stats = await api('/stats');
   if(!stats) return;
-    $('tabContent').innerHTML = `
+  $('tabContent').innerHTML = `
     <div class="stats">
       <div class="stat-card"><div class="num">${stats.total_subscribers}</div><div class="label">总用户</div></div>
       <div class="stat-card good"><div class="num">${stats.active}</div><div class="label">付费活跃</div></div>
-      <div class="stat-card warn"><div class="num">${stats.expiring_soon}</div><div class="label">7天内到期</div></div>
+      <div class="stat-card warn"><div class="num">${stats.expiring_soon}</div><div class="label">即将到期</div></div>
       <div class="stat-card"><div class="num">${stats.expired}</div><div class="label">已到期</div></div>
+    </div>
+    <div class="stats" style="grid-template-columns:1fr">
       <div class="stat-card"><div class="num">${(stats.total_messages||0).toLocaleString()}</div><div class="label">总消息数</div></div>
     </div>
-    <div class="section"><div class="section-header"><h2>快速操作</h2></div>
-      <div style="padding:16px">
-        <a href="." style="color:#D3543A;font-size:13px">→ 查看产品页</a>
-      </div>
-    </div>`;
+    <a href="." class="quick-link" style="display:block;background:#fff;border-radius:12px;margin-top:8px;box-shadow:0 1px 3px rgba(0,0,0,.04)">→ 查看产品页</a>`;
   $('statusBadge').textContent = '运行中';
 }
 
-async function loadSubscribers(filter=''){
+let _currentFilter = '';
+
+async function loadSubscribers(filter){
+  if(filter!==undefined) _currentFilter = filter||'';
   let url = '/subscribers';
-  if(filter) url += '?status='+filter;
+  if(_currentFilter) url += '?status='+_currentFilter;
   const subs = await api(url);
   if(!subs) return;
   $('tabContent').innerHTML = `
     <div class="section">
-      <div class="section-header"><h2>订阅用户</h2>
-        <div class="tab-nav">
-          <span class="${!filter?'active':''}" onclick="loadSubscribers('')">全部</span>
-          <span class="${filter=='active'?'active':''}" onclick="loadSubscribers('active')">付费</span>
-          <span class="${filter=='expired'?'active':''}" onclick="loadSubscribers('expired')">到期</span>
-        </div>
+      <div class="section-hd"><h2>订阅用户</h2></div>
+      <div class="filters">
+        <span class="${!_currentFilter?'active':''}" onclick="loadSubscribers('')">全部</span>
+        <span class="${_currentFilter=='active'?'active':''}" onclick="loadSubscribers('active')">付费中</span>
+        <span class="${_currentFilter=='expired'?'active':''}" onclick="loadSubscribers('expired')">已到期</span>
       </div>
       ${subs.length===0?'<div class="empty">暂无用户</div>':`
-      <table><tr><th>用户</th><th>套餐</th><th>用量</th><th>状态</th><th>到期</th><th>操作</th></tr>
+      <div class="user-list">
       ${subs.map(s=>`
-        <tr>
-          <td>${s.nickname}<br><small style="color:#aaa">${s.openid}</small></td>
-          <td>${s.plan_name}</td>
-          <td>${s.messages_used}/${s.messages_limit||'∞'}<br><small style="color:#aaa">总计${s.total_messages}条</small></td>
-          <td><span class="badge-status s-${s.status}">${s.status==='active'?'付费':'到期'}</span></td>
-          <td>${s.days_left>0?s.days_left+'天':'<span style=color:#c33>已到期</span>'}</td>
-          <td>
+        <div class="user-card">
+          <div class="uc-top">
+            <div>
+              <div class="uc-name">${s.nickname}</div>
+              <div class="uc-id">${s.openid}</div>
+            </div>
+            <span class="uc-badge ${s.status==='active'?'uc-active':'uc-expired'}">${s.status==='active'?'付费':'到期'}</span>
+          </div>
+          <div class="uc-meta">
+            <span>📦 <b>${s.plan_name}</b></span>
+            <span>💬 <b>${s.messages_used}/${s.messages_limit||'∞'}</b></span>
+            <span>⏰ <b style="color:${s.days_left>7?'#27AE60':s.days_left>0?'#E67E22':'#C0392B'}">${s.days_left>0?s.days_left+'天':'已到期'}</b></span>
+          </div>
+          <div class="uc-actions">
             ${s.status==='expired'?`<button class="btn btn-primary btn-sm" onclick="activateSub(${s.id})">激活</button>`:''}
             ${s.status!=='expired'?`<button class="btn btn-warn btn-sm" onclick="expireSub(${s.id})">到期</button>`:''}
-            <button class="btn btn-sm" style="background:#27AE60;color:#fff" onclick="renewSub(${s.id})">续费</button>
-          </td>
-        </tr>`).join('')}
-      </table>`}
+            <button class="btn btn-green btn-sm" onclick="renewSub(${s.id})">续费</button>
+          </div>
+        </div>`).join('')}
+      </div>`}
     </div>`;
 }
 
@@ -155,13 +196,23 @@ async function loadOrders(){
   const orders = await api('/orders');
   if(!orders) return;
   $('tabContent').innerHTML = `
-    <div class="section"><div class="section-header"><h2>最近订单</h2></div>
-    ${orders.length===0?'<div class="empty">暂无订单</div>':`
-    <table><tr><th>ID</th><th>用户ID</th><th>套餐</th><th>金额</th><th>状态</th><th>时间</th></tr>
-    ${orders.map(o=>`
-      <tr><td>#${o.id}</td><td>${o.subscriber_id}</td><td>${o.plan_name}</td>
-      <td>¥${o.amount_yuan}</td><td>${o.status}</td><td>${o.created_at}</td></tr>`).join('')}
-    </table>`}
+    <div class="section">
+      <div class="section-hd"><h2>最近订单</h2></div>
+      ${orders.length===0?'<div class="empty">暂无订单</div>':`
+      <div class="order-list">
+      ${orders.map(o=>`
+        <div class="order-card">
+          <div class="ol-left">
+            <span style="color:#aaa;font-size:10px">#${o.id}</span>
+            <b style="margin-left:6px">${o.plan_name}</b>
+            <div class="ol-meta">用户${o.subscriber_id} · ${o.created_at}</div>
+          </div>
+          <div class="ol-right">
+            <div class="ol-amount">¥${o.amount_yuan}</div>
+            <span class="ol-status ${o.status==='paid'?'os-paid':'os-pending'}">${o.status==='paid'?'已付':'待付'}</span>
+          </div>
+        </div>`).join('')}
+      </div>`}
     </div>`;
 }
 
@@ -169,14 +220,23 @@ async function loadPlans(){
   const plans = await api('/plans');
   if(!plans) return;
   $('tabContent').innerHTML = `
-    <div class="section"><div class="section-header"><h2>套餐配置</h2></div>
-    <table><tr><th>ID</th><th>名称</th><th>月费</th><th>消息配额</th><th>状态</th><th>操作</th></tr>
-    ${plans.map(p=>`
-      <tr><td>${p.id}</td><td>${p.name}</td><td>¥${p.price_yuan}</td>
-      <td>${p.monthly_messages||'不限量'}</td>
-      <td>${p.is_active?'✅':'❌'}</td>
-      <td><button class="btn btn-sm ${p.is_active?'btn-warn':'btn-primary'}" onclick="togglePlan(${p.id})">${p.is_active?'停用':'启用'}</button></td></tr>`).join('')}
-    </table></div>`;
+    <div class="section">
+      <div class="section-hd"><h2>套餐配置</h2></div>
+      <div class="plan-list">
+      ${plans.map(p=>`
+        <div class="plan-card">
+          <div class="pl-info">
+            ${p.name}
+            <small>${p.monthly_messages||'不限量'} 条/月</small>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;color:${p.is_active?'#27AE60':'#ccc'}">${p.is_active?'启用':'停用'}</span>
+            <div class="pl-price">¥${p.price_yuan}</div>
+            <button class="btn ${p.is_active?'btn-warn':'btn-primary'} btn-sm" onclick="togglePlan(${p.id})">${p.is_active?'停用':'启用'}</button>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
 }
 
 async function expireSub(id){if(confirm('确认标记为到期？')){await api('/subscribers/'+id+'/expire',{method:'POST'});loadSubscribers()}}
@@ -186,7 +246,6 @@ async function togglePlan(id){await api('/plans/'+id+'/toggle',{method:'POST'});
 
 function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
 
-// 初始加载
 loadDashboard();
 </script>
 </body>
