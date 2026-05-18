@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8B1A1A"/>
+      <stop offset="25%" stop-color="#C41E3A"/>
+      <stop offset="55%" stop-color="#E8392E"/>
+      <stop offset="80%" stop-color="#FF6B35"/>
+      <stop offset="100%" stop-color="#FFB347"/>
+    </linearGradient>
+    <linearGradient id="clawGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#E8892E"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="rgba(139,26,26,0.45)"/>
+    </filter>
+    <filter id="clawShadow">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="rgba(180,60,20,0.5)"/>
+    </filter>
+  </defs>
+
+  <rect x="20" y="20" width="600" height="600" rx="100" fill="url(#bg)"/>
+
+  <!-- 头顶双钳：抓取爪风格(grasping claws) -->
+  <g filter="url(#clawShadow)" fill="none" stroke="url(#clawGrad)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 左钳 -->
+    <g transform="translate(268, 108)">
+      <!-- 大钳臂 -->
+      <path d="M-4 28 L-2 0"/>
+      <!-- 外钳弧 (左弯) -->
+      <path d="M-2 0 Q-35 -15 -28 -52"/>
+      <!-- 内钳弧 (右弯) -->
+      <path d="M-2 0 Q25 -10 18 -46"/>
+      <!-- 钳尖闭合 -->
+      <path d="M-28 -52 Q-6 -56 18 -46" stroke-width="6"/>
+    </g>
+    <!-- 右钳 (镜像) -->
+    <g transform="translate(372, 108) scale(-1,1)">
+      <path d="M-4 28 L-2 0"/>
+      <path d="M-2 0 Q-35 -15 -28 -52"/>
+      <path d="M-2 0 Q25 -10 18 -46"/>
+      <path d="M-28 -52 Q-6 -56 18 -46" stroke-width="6"/>
+    </g>
+  </g>
+
+  <!-- 虾 主体字 -->
+  <text x="320" y="420" text-anchor="middle"
+        font-family="'PingFang SC','Microsoft YaHei',sans-serif"
+        font-size="290" font-weight="900"
+        fill="#FFFFFF" filter="url(#shadow)">虾</text>
+
+  <!-- AI 秘书 -->
+  <text x="525" y="275" text-anchor="middle"
+        font-family="'PingFang SC','Microsoft YaHei',sans-serif"
+        font-size="30" font-weight="600"
+        fill="rgba(255,255,255,0.6)" letter-spacing="8">
+    <tspan x="525" dy="0">A</tspan>
+    <tspan x="525" dy="40">I</tspan>
+    <tspan x="525" dy="55">秘</tspan>
+    <tspan x="525" dy="40">书</tspan>
+  </text>
+
+  <text x="340" y="580" text-anchor="middle"
+        font-family="Arial,'PingFang SC',sans-serif"
+        font-size="26" font-weight="400"
+        fill="rgba(255,255,255,0.35)" letter-spacing="6">xiakexia</text>
+
+  <g stroke="rgba(255,255,255,0.2)" stroke-width="4" stroke-linecap="round">
+    <line x1="65" y1="65" x2="115" y2="65"/><line x1="65" y1="65" x2="65" y2="115"/>
+    <line x1="525" y1="65" x2="575" y2="65"/><line x1="575" y1="65" x2="575" y2="115"/>
+    <line x1="65" y1="525" x2="115" y2="575"/><line x1="65" y1="575" x2="65" y2="525"/>
+    <line x1="525" y1="575" x2="575" y2="575"/><line x1="575" y1="525" x2="575" y2="575"/>
+  </g>
+</svg>
