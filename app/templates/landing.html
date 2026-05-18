@@ -169,8 +169,7 @@ async function doPay(){
       if(typeof WeixinJSBridge !== 'undefined'){
         WeixinJSBridge.invoke('getBrandWCPayRequest', data.jsapi, function(res){
           if(res.err_msg === 'get_brand_wcpay_request:ok'){
-            showToast('✅ 支付成功！现在可以去公众号聊天了');
-            btn.textContent = '✅ 已开通'; btn.style.background = '#27AE60';
+            showSuccess(btn);
           }else if(res.err_msg.indexOf('cancel')>=0){
             showToast('已取消支付'); restoreBtn(btn);
           }else{
@@ -182,8 +181,7 @@ async function doPay(){
         setTimeout(doPay, 1000);
       }
     }else if(data.ok && data.test_mode){
-        showToast('✅ 测试模式 · 订阅已激活');
-        btn.textContent = '✅ 已开通'; btn.style.background = '#27AE60';
+        showSuccess(btn);
     }else{
       showToast(data.error||'下单失败');
       restoreBtn(btn);
@@ -199,6 +197,24 @@ function showToast(msg){
   const t = document.getElementById('toast'); if(!t) return;
   t.textContent = msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+function showSuccess(btn){
+  btn.textContent = '✅ 已开通'; btn.style.background = '#27AE60';
+  document.getElementById('pickedName').innerHTML = '';
+  document.getElementById('pkgGrid').innerHTML = `
+    <div class="pkg-card" style="grid-column:1/-1;text-align:center;padding:24px;border-color:#27AE60">
+      <div style="font-size:40px;margin-bottom:8px">🦞</div>
+      <div style="font-size:16px;font-weight:700;color:#27AE60;margin-bottom:6px">开通成功！</div>
+      <div style="font-size:13px;color:#555;line-height:1.8">
+        回到<b>智享家公众号</b>对话框<br>
+        直接发消息就能开始聊天
+      </div>
+      <div style="margin-top:14px;font-size:11px;color:#aaa">
+        👆 点左上角「✕」返回公众号
+      </div>
+    </div>
+  `;
 }
 </script>
 </body>
