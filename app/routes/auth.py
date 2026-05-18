@@ -50,11 +50,13 @@ async def auth_callback(code: str = '', state: str = '', redirect: str = '/'):
                 return RedirectResponse(f'{BASE_URL}/?error=oauth_fail')
 
             # 通过 JS 写入 localStorage 然后跳转（微信内无法设 cookie）
+            import json
+            safe_openid = json.dumps(openid)  # JSON 编码防 XSS
             html = f'''<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
 <script>
-localStorage.setItem('wx_openid', '{openid}');
-localStorage.setItem('wx_token', '{data.get("access_token", "")}');
-location.href = '{BASE_URL}{redirect}';
+localStorage.setItem('wx_openid', {safe_openid});
+localStorage.setItem('wx_token', {json.dumps(data.get("access_token", ""))});
+location.href = {json.dumps(f'{BASE_URL}{redirect}')};
 </script></body></html>'''
             from fastapi.responses import HTMLResponse
             return HTMLResponse(html)

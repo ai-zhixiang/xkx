@@ -27,7 +27,7 @@ WX_MCHID = os.getenv('WXPAY_MCHID', '')
 WX_API_V3_KEY = os.getenv('WXPAY_API_V3_KEY', '')
 WX_SERIAL_NO = os.getenv('WXPAY_MCH_SERIAL_NO', '')
 WX_PRIVATE_KEY_PATH = os.getenv('WXPAY_PRIVATE_KEY_PATH', '/etc/wechat/apiclient_key.pem')
-WX_NOTIFY_URL = os.getenv('WXPAY_NOTIFY_URL', 'http://xkx.pangoozn.com/api/pay/notify')
+WX_NOTIFY_URL = os.getenv('WXPAY_NOTIFY_URL', 'https://hai.pangoozn.com/xkx/api/pay/notify')
 WXPAY_ENABLED = os.getenv('WXPAY_ENABLED', 'true').lower() in ('true', '1', 'yes')
 
 

@@ -163,8 +163,6 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     total = r1.scalar()
     r2 = await db.execute(select(func.count(Subscriber.id)).where(Subscriber.status == SubscriberStatus.ACTIVE))
     active = r2.scalar()
-    r3 = await db.execute(select(func.count(Subscriber.id)).where(Subscriber.status == SubscriberStatus.TRIAL))
-    trial = r3.scalar()
     r4 = await db.execute(select(func.count(Subscriber.id)).where(Subscriber.status == SubscriberStatus.EXPIRED))
     expired = r4.scalar()
     r5 = await db.execute(select(func.coalesce(func.sum(Subscriber.total_messages), 0)))
@@ -181,7 +179,7 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     expiring = r6.scalar()
 
     return {
-        'total_subscribers': total, 'active': active, 'trial': trial,
+        'total_subscribers': total, 'active': active,
         'expired': expired, 'expiring_soon': expiring, 'total_messages': total_msgs,
     }
 

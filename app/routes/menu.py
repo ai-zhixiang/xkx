@@ -3,6 +3,7 @@
 """
 import os
 import httpx
+from urllib.parse import quote
 from fastapi import APIRouter
 
 router = APIRouter()
@@ -31,7 +32,7 @@ async def create_menu():
     oauth_url = (
         f'https://open.weixin.qq.com/connect/oauth2/authorize'
         f'?appid={WX_APPID}'
-        f'&redirect_uri={BASE_URL}/api/auth/callback?redirect=/'
+        f'&redirect_uri={quote(BASE_URL + "/api/auth/callback?redirect=/", safe="")}'
         f'&response_type=code&scope=snsapi_userinfo&state=xkx'
         f'#wechat_redirect'
     )
@@ -39,7 +40,7 @@ async def create_menu():
     menu = {
         'button': [
             {
-                'name': '🦞 开通享客虾',
+                'name': '开通享客虾',
                 'type': 'view',
                 'url': oauth_url,
             },

@@ -20,6 +20,7 @@ from app.routes.public import router as public_router
 from app.routes.pay import router as pay_router
 from app.routes.auth import router as auth_router
 from app.routes.menu import router as menu_router
+from app.scheduler import start_scheduler
 
 
 @asynccontextmanager
@@ -37,6 +38,8 @@ async def lifespan(app: FastAPI):
                 session.add(Plan(**p))
             await session.commit()
             print(f"[享客虾] 已填充 {len(SEED_PLANS)} 个套餐")
+
+    start_scheduler()
 
     yield
     print("[享客虾] 服务停止")
@@ -57,6 +60,7 @@ app.include_router(pay_router)
 app.include_router(public_router)
 app.include_router(admin_router, prefix='/api/admin')
 app.include_router(wechat_router, prefix='/api/wechat')
+app.include_router(menu_router)
 app.mount('/static', StaticFiles(directory='app/static'), name='static')
 
 
