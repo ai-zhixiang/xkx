@@ -78,7 +78,7 @@ input:focus{border-color:#D3543A}
 const TOKEN = btoa('admin:admin888');
 
 async function api(path, opts={}){
-  const res = await fetch('/api/admin'+path, {
+  const res = await fetch('api/admin'+path, {
     headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'},...opts
   });
   if(res.status===401){showToast('登录过期');return null}
@@ -112,7 +112,7 @@ async function loadDashboard(){
     </div>
     <div class="section"><div class="section-header"><h2>快速操作</h2></div>
       <div style="padding:16px">
-        <a href="/" style="color:#D3543A;font-size:13px">→ 查看产品页</a>
+        <a href="." style="color:#D3543A;font-size:13px">→ 查看产品页</a>
       </div>
     </div>`;
   $('statusBadge').textContent = '运行中';

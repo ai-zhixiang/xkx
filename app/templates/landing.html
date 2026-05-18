@@ -113,10 +113,10 @@ function isWechat(){ return /micromessenger/i.test(navigator.userAgent); }
 
 // OAuth 检测：微信内无 openid → 跳授权
 if(isWechat() && !localStorage.getItem('wx_openid')){
-  location.href = '/api/auth/redirect?redirect=/';
+  location.href = 'api/auth/redirect?redirect=/';
 }
 
-fetch('/api/plans').then(r=>r.json()).then(data=>{
+fetch('api/plans').then(r=>r.json()).then(data=>{
   plans = data;
   renderPlans();
 }).catch(()=>{
@@ -152,14 +152,14 @@ async function doPay(){
 
   // OAuth 检查
   const openid = localStorage.getItem('wx_openid') || '';
-  if(!openid){location.href='/api/auth/redirect?redirect=/';return}
+  if(!openid){location.href='api/auth/redirect?redirect=/';return}
 
   const btn = document.getElementById('payBtn');
   btn.textContent = '正在拉起支付…';
   btn.style.pointerEvents = 'none'; btn.style.opacity = '.7';
 
   try{
-    const resp = await fetch('/api/pay/create',{
+    const resp = await fetch('api/pay/create',{
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({plan_id:selectedPlanId, openid, nickname:''})
     });
