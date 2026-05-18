@@ -28,6 +28,7 @@ WX_API_V3_KEY = os.getenv('WXPAY_API_V3_KEY', '')
 WX_SERIAL_NO = os.getenv('WXPAY_MCH_SERIAL_NO', '')
 WX_PRIVATE_KEY_PATH = os.getenv('WXPAY_PRIVATE_KEY_PATH', '/etc/wechat/apiclient_key.pem')
 WX_NOTIFY_URL = os.getenv('WXPAY_NOTIFY_URL', 'http://xkx.pangoozn.com/api/pay/notify')
+WXPAY_ENABLED = os.getenv('WXPAY_ENABLED', 'true').lower() in ('true', '1', 'yes')
 
 
 def _load_private_key():
@@ -121,6 +122,25 @@ async def create_order(data: CreateOrderRequest, db: AsyncSession = Depends(get_
     db.add(order)
     await db.commit()
     await db.refresh(order)
+
+    # 测试模式：跳过微信支付，直接标记已付
+    if not WXPAY_ENABLED:
+        order.status = OrderStatus.PAID
+        order.paid_at = datetime.utcnow()
+        # 激活订阅
+        sub.status = SubscriberStatus.ACTIVE
+        if order.new_expires_at:
+            sub.expires_at = order.new_expires_at
+        await db.commit()
+        return {
+            'ok': True,
+            'test_mode': True,
+            'order_id': order.id,
+            'subscriber_id': sub.id,
+            'is_new': is_new,
+            'message': '测试模式：已跳过微信支付，订阅已激活',
+            'jsapi': None,
+        }
 
     # 构建微信 JSAPI 下单
     out_trade_no = f'XKX{order.id}{int(time.time())}'

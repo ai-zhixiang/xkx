@@ -180,6 +180,9 @@ async function doPay(){
         showToast('正在加载支付…');
         setTimeout(doPay, 1000);
       }
+    }else if(data.ok && data.test_mode){
+        showToast('✅ 测试模式 · 订阅已激活');
+        btn.textContent = '✅ 已开通'; btn.style.background = '#27AE60';
     }else{
       showToast(data.error||'下单失败');
       restoreBtn(btn);

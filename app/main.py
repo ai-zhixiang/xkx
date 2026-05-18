@@ -19,6 +19,7 @@ from app.routes.wechat import router as wechat_router
 from app.routes.public import router as public_router
 from app.routes.pay import router as pay_router
 from app.routes.auth import router as auth_router
+from app.routes.menu import router as menu_router
 
 
 @asynccontextmanager
