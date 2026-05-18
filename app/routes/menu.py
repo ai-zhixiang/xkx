@@ -1,5 +1,6 @@
 """
 享客虾 — 微信菜单管理
+（与智享家共享服务号，主菜单由 ailuckycards 维护）
 """
 import os
 import httpx
@@ -24,40 +25,34 @@ async def get_access_token():
 
 @router.get('/api/menu/create')
 async def create_menu():
-    """创建公众号菜单"""
+    """创建公众号菜单（完整版，含智享家全线产品）"""
     token = await get_access_token()
     if not token:
         return {'error': '获取 token 失败'}
 
-    oauth_url = (
-        f'https://open.weixin.qq.com/connect/oauth2/authorize'
-        f'?appid={WX_APPID}'
-        f'&redirect_uri={quote(BASE_URL + "/api/auth/callback?redirect=/", safe="")}'
-        f'&response_type=code&scope=snsapi_userinfo&state=xkx'
-        f'#wechat_redirect'
-    )
-
     menu = {
         'button': [
             {
-                'name': '开通享客虾',
-                'type': 'view',
-                'url': oauth_url,
+                'name': 'AI嗨卡',
+                'sub_button': [
+                    {'type': 'view', 'name': 'AI制卡', 'url': 'https://hai.pangoozn.com/static/ai-card.html'},
+                    {'type': 'view', 'name': '每日分享', 'url': 'https://hai.pangoozn.com/static/daily.html'},
+                    {'type': 'view', 'name': '个人中心', 'url': 'https://hai.pangoozn.com/static/workspace.html'},
+                ]
             },
             {
-                'name': '📱 我的',
+                'name': '音乐广场',
                 'sub_button': [
-                    {
-                        'name': '查额度',
-                        'type': 'click',
-                        'key': 'check_quota',
-                    },
-                    {
-                        'name': '帮助',
-                        'type': 'click',
-                        'key': 'help',
-                    },
-                ],
+                    {'type': 'view', 'name': '听音乐', 'url': 'https://hai.pangoozn.com/static/music-square.html'},
+                    {'type': 'view', 'name': 'AI写歌', 'url': 'https://hai.pangoozn.com/static/workspace.html?tab=compose'},
+                ]
+            },
+            {
+                'name': '品牌合作',
+                'sub_button': [
+                    {'type': 'view', 'name': '智享家', 'url': 'https://hai.pangoozn.com/'},
+                    {'type': 'view', 'name': '🦞享客虾', 'url': 'https://hai.pangoozn.com/xkx/'},
+                ]
             },
         ]
     }
