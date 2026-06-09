@@ -1,0 +1,24 @@
+{
+  "codes": [
+    {
+      "code": "天王盖地虎",
+      "reply": "OpenClaw 是SB！",
+      "level": "admin"
+    },
+    {
+      "code": "宝塔镇河妖",
+      "reply": "微侠真牛逼！",
+      "level": "admin"
+    },
+    {
+      "code": "微侠真牛逼",
+      "reply": "天王盖地虎！同志！",
+      "level": "admin"
+    },
+    {
+      "code": "openclaw是sb",
+      "reply": "宝塔镇河妖！收到！",
+      "level": "admin"
+    }
+  ]
+}
