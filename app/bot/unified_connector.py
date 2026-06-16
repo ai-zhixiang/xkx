@@ -51,7 +51,7 @@ from typing_cache import TypingTicketCache
 ILINK_BASE_URL = "https://ilinkai.weixin.qq.com"
 WEIXIN_CDN_BASE_URL = "https://novac2c.cdn.weixin.qq.com/c2c"
 ILINK_APP_ID = "bot"
-ILINK_APP_CLIENT_VERSION = 1  # OpenClaw 用的版本号
+ILINK_APP_CLIENT_VERSION = (2 << 16) | (2 << 8) | 0  # Hermes 原生值 131584
 
 LONG_POLL_TIMEOUT_MS = 35_000
 API_TIMEOUT_MS = 15_000
@@ -280,7 +280,7 @@ def _make_logger(name: str, log_file: Optional[Path] = None) -> logging.Logger:
 # ═══════════════════════════════════════════════════════════════
 
 def _build_base_info() -> dict:
-    return {"channel_version": "2.4.4"}
+    return {"channel_version": "2.2.0"}
 
 
 def _build_headers(token: str, body: str = "") -> dict:
@@ -414,32 +414,39 @@ async def get_updates(token: str, sync_buf: str, timeout_ms: int,
 async def send_msg(token: str, to_user_id: str, text: str,
                    context_token: str = "",
                    bot: Optional['BotSession'] = None):
-    """发送消息 — 支持 MEDIA:/path 文件直传 + 文本分块 (P0) + typing 指示器 (P1)"""
+    """发送消息 — 支持 MEDIA: 文件推送 + 文本分块 + typing"""
     root_log = logging.getLogger("unified-connector")
 
-    # 检测 MEDIA: 前缀 → 走文件上传
-    media_match = re.match(r'^\s*MEDIA:\s*(.+?)\s*$', text, re.DOTALL)
-    if media_match:
-        path = media_match.group(1).strip().rstrip('`"\'')
+    # 提取所有 MEDIA: 路径（不要求整段文本都是 MEDIA）
+    media_pattern = re.compile(
+        r'''MEDIA:\s*(?P<path>`[^`\n]+`|"[^"\n]+"|'[^'\n]+'|(?:~/|/)\S+(?:[^\S\n]+\S+)*?\.[a-zA-Z0-9]+(?=[\s`"',;:)\]}]|$))'''
+    )
+    media_paths = []
+    cleaned = text
+    for match in media_pattern.finditer(text):
+        path = match.group("path").strip().strip('`"\'')
         path = os.path.expanduser(path)
         if os.path.isfile(path):
-            try:
-                await _send_file(token, to_user_id, path, context_token)
-            except Exception as e:
-                root_log.warning(f"[send_msg] 文件发送失败 {path}: {e}")
-                # fallback: 发 HTTP 链接
-                await _send_text(token, to_user_id,
-                    f"📎 文件发送失败（已上传至服务器）\n请手动下载: file://{path}",
-                    context_token)
-            return
-        else:
-            root_log.warning(f"[send_msg] MEDIA 文件不存在: {path}")
+            media_paths.append(path)
+            cleaned = cleaned.replace(match.group(0), "").strip()
 
-    # ── P1: 发送 typing 指示器 ──
-    if bot:
-        asyncio.create_task(_send_typing_indicator(bot, to_user_id, TYPING_START))
+    # 如果有 MEDIA 文件，先推送
+    for path in media_paths:
+        try:
+            await _send_file(token, to_user_id, path, context_token)
+            root_log.info(f"[send_msg] 文件推送成功: {Path(path).name}")
+        except Exception as e:
+            root_log.warning(f"[send_msg] 文件推送失败 {path}: {e}")
+            await _send_text(token, to_user_id,
+                f"📎 文件 {Path(path).name} 推送失败，请手动下载: file://{path}",
+                context_token)
 
-    # ── P0: 文本分块发送 (移植 WeixinAdapter _split_text + _send_text_chunk) ──
+    # 如果只有 MEDIA 没文字，就不发文字了
+    cleaned = cleaned.strip()
+    if not cleaned:
+        return
+
+    # ── 文本分块发送 (移植 WeixinAdapter _split_text + _send_text_chunk) ──
     formatted = format_weixin_message(text)
     chunks = split_text_for_weixin_delivery(formatted, max_length=2000, split_per_line=False)
     if not chunks:
@@ -450,10 +457,34 @@ async def send_msg(token: str, to_user_id: str, text: str,
             continue
         await _send_text(token, to_user_id, chunk, context_token)
         # 多分块之间延时，防 iLink 频率限制
-        if idx < len(chunks) - 1:
-            await asyncio.sleep(1.5)
+        else:
+            root_log.warning(f"[send_msg] MEDIA 文件不存在: {path}")
 
-    # ── P1: 停止 typing 指示器 ──
+    # ── 混合文本中的 MEDIA: 引用提取 ──
+    media_paths = re.findall(r'MEDIA:\s*(\S+)', text)
+    file_sent = False
+    if media_paths:
+        text = re.sub(r'\n?MEDIA:\s*\S+\n?', '\n', text).strip()
+        for path in media_paths:
+            path = os.path.expanduser(path.strip().rstrip('`"\''))
+            if os.path.isfile(path):
+                try:
+                    await _send_file(token, to_user_id, path, context_token)
+                    root_log.info(f"[send_msg] 混合文本 MEDIA 发送成功: {path}")
+                    file_sent = True
+                except Exception as e:
+                    root_log.warning(f"[send_msg] 混合文本 MEDIA 发送失败 {path}: {e}")
+                    await _send_text(token, to_user_id,
+                        f"📎 文件发送失败（已上传至服务器）\n请手动下载: file://{path}",
+                        context_token)
+            else:
+                root_log.warning(f"[send_msg] MEDIA 文件不存在 (混合文本): {path}")
+        if not text or not text.strip():
+            if file_sent:
+                return  # 只有文件没文字，发完就走
+            text = "📎 文件"  # 兜底
+
+    # ── P1: 发送 typing 指示器 ──
     if bot:
         asyncio.create_task(_send_typing_indicator(bot, to_user_id, TYPING_STOP))
 
@@ -790,9 +821,28 @@ async def _run_session(bot: BotSession, client: httpx.AsyncClient, shutdown: asy
                     await send_msg(bot.token, from_user, reply, ctx, bot=bot)
                     continue
 
+                # ── P2: 立即发送 typing "正在输入..."（在 AI 处理之前）──
+                asyncio.create_task(_send_typing_indicator(bot, from_user, TYPING_START))
+                # 同时启动心跳：每 15s 刷新一次，防止微信超时
+                typing_heartbeat_start = time.time()
+                typing_heartbeat_task = None
+
+                async def _typing_heartbeat():
+                    while time.time() - typing_heartbeat_start < 120:
+                        await asyncio.sleep(15)
+                        await _send_typing_indicator(bot, from_user, TYPING_START)
+
+                typing_heartbeat_task = asyncio.create_task(_typing_heartbeat())
+
                 # 转发网关
-                reply = await forward_to_gateway(
-                    bot.bot_id, from_user, text, msg.get("msg_id", ""), client)
+                try:
+                    reply = await forward_to_gateway(
+                        bot.bot_id, from_user, text, msg.get("msg_id", ""), client)
+                finally:
+                    # 取消心跳
+                    if typing_heartbeat_task:
+                        typing_heartbeat_task.cancel()
+
                 if reply:
                     log.info("📤 %s", reply[:40])
                     await send_msg(bot.token, from_user, reply, ctx, bot=bot)
