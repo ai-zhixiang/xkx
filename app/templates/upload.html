@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<base href="/xkx/">
+<title>享客虾 · 文件上传</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,'PingFang SC','Microsoft YaHei',sans-serif;background:#F8F6F2;color:#2C2C2C;min-height:100vh}
+
+.header{background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;padding:36px 20px 28px;text-align:center}
+.header .emoji{font-size:40px;margin-bottom:6px}
+.header h1{font-size:20px;font-weight:700}
+.header p{font-size:13px;opacity:.8;margin-top:4px}
+
+.main{padding:24px 16px;max-width:480px;margin:0 auto}
+
+.upload-zone{border:2px dashed #ccc;border-radius:16px;padding:48px 20px;text-align:center;cursor:pointer;transition:all .2s;background:#fff;position:relative}
+.upload-zone:hover,.upload-zone.dragover{border-color:#C0392B;background:rgba(192,57,43,.02)}
+.upload-zone .icon{font-size:48px;margin-bottom:12px}
+.upload-zone .title{font-size:16px;font-weight:600;margin-bottom:6px}
+.upload-zone .hint{font-size:12px;color:#888;line-height:1.6}
+.upload-zone input[type=file]{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer}
+
+.formats{margin-top:20px;background:#fff;border-radius:12px;padding:16px;border:1px solid rgba(192,57,43,.06)}
+.formats h3{font-size:13px;font-weight:600;margin-bottom:8px;color:#555}
+.formats .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.fmt-tag{font-size:11px;padding:5px 8px;background:#f5f5f5;border-radius:6px;text-align:center;color:#666}
+
+.progress{display:none;margin-top:16px;background:#fff;border-radius:12px;padding:20px;text-align:center;border:1px solid rgba(192,57,43,.06)}
+.progress .spinner{display:inline-block;width:32px;height:32px;border:3px solid #eee;border-top-color:#C0392B;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.progress .msg{font-size:14px;color:#555}
+
+.result{display:none;margin-top:16px;background:#fff;border-radius:12px;padding:20px;border:1px solid rgba(39,174,96,.2);border-left:4px solid #27AE60}
+.result .icon{font-size:36px;margin-bottom:4px}
+.result .filename{font-size:14px;font-weight:600;word-break:break-all;margin-bottom:8px}
+.result .meta{font-size:11px;color:#888;margin-bottom:12px}
+.result .preview{border:1px solid #eee;border-radius:8px;padding:12px;font-size:12px;color:#555;max-height:200px;overflow-y:auto;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+.result .preview-title{font-size:11px;color:#aaa;margin-bottom:6px}
+
+.error{display:none;margin-top:16px;background:#fff;border-radius:12px;padding:20px;border:1px solid rgba(192,57,43,.2);border-left:4px solid #C0392B}
+.error .icon{font-size:28px;margin-bottom:6px}
+.error .msg{font-size:13px;color:#C0392B}
+.error .retry{margin-top:10px;padding:8px 24px;border-radius:20px;border:1px solid #C0392B;background:#fff;color:#C0392B;font-size:13px;cursor:pointer}
+
+.actions{margin-top:20px;padding:16px 0;text-align:center}
+.btn-back{display:inline-block;padding:12px 28px;border-radius:25px;font-size:14px;font-weight:600;background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;text-decoration:none;transition:all .2s}
+.btn-back:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(192,57,43,.25)}
+.btn-back .arrow{font-size:12px;margin-right:4px}
+
+.footer{margin-top:20px;padding:20px 16px;text-align:center;font-size:11px;color:#aaa;border-top:1px solid #eee}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="emoji">🦞</div>
+  <h1>享客虾 · 文件上传</h1>
+  <p>发送文件给 AI 秘书处理</p>
+</div>
+
+<div class="main">
+
+  <div class="upload-zone" id="uploadZone">
+    <div class="icon">📎</div>
+    <div class="title">点击选择文件 或 拖拽到此处</div>
+    <div class="hint">PDF · Word · TXT · CSV · 图片<br>最大 10MB</div>
+    <input type="file" id="fileInput" accept=".txt,.md,.pdf,.docx,.csv,.jpg,.jpeg,.png,.gif,.webp">
+  </div>
+
+  <div class="formats">
+    <h3>支持的格式</h3>
+    <div class="grid">
+      <div class="fmt-tag">📄 PDF</div>
+      <div class="fmt-tag">📝 Word</div>
+      <div class="fmt-tag">📃 TXT</div>
+      <div class="fmt-tag">📊 CSV</div>
+      <div class="fmt-tag">🖼 JPG</div>
+      <div class="fmt-tag">🖼 PNG</div>
+    </div>
+  </div>
+
+  <div class="progress" id="progress">
+    <div class="spinner"></div>
+    <div class="msg">正在上传和处理…</div>
+  </div>
+
+  <div class="result" id="result">
+    <div class="icon">✅</div>
+    <div class="filename" id="resFilename"></div>
+    <div class="meta" id="resMeta"></div>
+    <div class="preview-title">📋 内容预览</div>
+    <div class="preview" id="resPreview"></div>
+  </div>
+
+  <div class="error" id="error">
+    <div class="icon">❌</div>
+    <div class="msg" id="errMsg"></div>
+    <button class="retry" onclick="resetForm()">重新上传</button>
+  </div>
+
+  <div class="actions">
+    <a class="btn-back" href="javascript:goBack()">
+      <span class="arrow">👈</span> 回到享客虾对话
+    </a>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div style="font-weight:600;color:#555;margin-bottom:3px">🦞 享客虾 · 私人AI秘书</div>
+  <div>由 智享家 提供技术支持</div>
+</div>
+
+<script>
+const openid = localStorage.getItem('wx_openid') || '';
+
+if (!openid) {
+  // 微信内无 openid → 跳 OAuth
+  if (/micromessenger/i.test(navigator.userAgent)) {
+    location.href = 'api/auth/redirect?redirect=/upload';
+  } else {
+    document.body.innerHTML = '<div style="text-align:center;padding:60px 20px"><h2>📱</h2><p>请在微信「智享家」公众号中打开此页面</p></div>';
+  }
+}
+
+document.getElementById('fileInput').addEventListener('change', handleFile);
+
+// 拖拽支持
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadFile(file);
+});
+
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (file) uploadFile(file);
+}
+
+async function uploadFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const allowed = ['txt','md','pdf','docx','csv','jpg','jpeg','png','gif','webp'];
+  if (!allowed.includes(ext)) {
+    showError(`不支持 .${ext} 格式，请选择 PDF/Word/TXT/CSV/图片`);
+    return;
+  }
+
+  showProgress();
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('openid', openid);
+
+  try {
+    const resp = await fetch('api/upload', { method: 'POST', body: form });
+    const data = await resp.json();
+
+    if (!resp.ok || !data.ok) {
+      showError(data.detail || data.error || '上传失败');
+      return;
+    }
+
+    showResult(data);
+  } catch(e) {
+    showError('网络错误，请重试');
+  }
+}
+
+function showProgress() {
+  document.getElementById('uploadZone').style.display = 'none';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('error').style.display = 'none';
+  document.getElementById('progress').style.display = 'block';
+}
+
+function showResult(data) {
+  document.getElementById('progress').style.display = 'none';
+  document.getElementById('result').style.display = 'block';
+
+  document.getElementById('resFilename').textContent = data.file_name;
+  const kb = (data.file_size / 1024).toFixed(0);
+  document.getElementById('resMeta').textContent = `${data.file_type?.toUpperCase()} · ${kb} KB`;
+  document.getElementById('resPreview').textContent = data.content_preview || '（无可读文本内容）';
+}
+
+function showError(msg) {
+  document.getElementById('progress').style.display = 'none';
+  document.getElementById('error').style.display = 'block';
+  document.getElementById('errMsg').textContent = msg;
+}
+
+function resetForm() {
+  document.getElementById('error').style.display = 'none';
+  document.getElementById('uploadZone').style.display = 'block';
+  document.getElementById('fileInput').value = '';
+}
+
+function goBack() {
+  // 微信内置浏览器关闭当前页
+  if (typeof WeixinJSBridge !== 'undefined') {
+    WeixinJSBridge.call('closeWindow');
+  } else {
+    // 回 landing
+    location.href = '/xkx/';
+  }
+}
+</script>
+</body>
+</html>

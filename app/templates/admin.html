@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<base href="/xkx/">
+<title>享客虾 · 管理后台</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,'PingFang SC','Microsoft YaHei',sans-serif;background:#F8F6F2;color:#2C2C2C;min-height:100vh;padding-bottom:24px}
+
+/* Top Bar */
+.top-bar{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.top-bar .logo{font-size:16px;font-weight:700}
+.top-bar .ver{font-size:10px;opacity:.5}
+.top-bar .badge{font-size:10px;padding:3px 8px;border-radius:8px;background:rgba(255,255,255,.15)}
+
+/* Tab Nav — horizontal scroll */
+.tabs{display:flex;gap:2px;background:#fff;overflow-x:auto;padding:6px 8px;border-bottom:1px solid #eee;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+.tabs span{flex-shrink:0;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:500;color:#888;cursor:pointer;white-space:nowrap;transition:all .15s}
+.tabs span.active{background:rgba(192,57,43,.08);color:#C0392B;font-weight:600}
+
+/* Content */
+.content{padding:12px 10px}
+
+/* Stats — 2 columns */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-card{background:#fff;border-radius:12px;padding:14px 12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.stat-card .num{font-size:24px;font-weight:700;color:#C0392B;line-height:1.2}
+.stat-card .label{font-size:11px;color:#999;margin-top:2px}
+.stat-card.warn .num{color:#E67E22}
+.stat-card.good .num{color:#27AE60}
+
+/* Section */
+.section{background:#fff;border-radius:12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden}
+.section-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #f0f0f0}
+.section-hd h2{font-size:14px;font-weight:600}
+
+/* User cards — mobile friendly */
+.user-list{display:flex;flex-direction:column;gap:1px;background:#f0f0f0}
+.user-card{padding:14px;background:#fff;display:flex;flex-direction:column;gap:8px}
+.user-card .uc-top{display:flex;justify-content:space-between;align-items:flex-start}
+.user-card .uc-name{font-size:14px;font-weight:600}
+.user-card .uc-id{font-size:10px;color:#aaa}
+.user-card .uc-meta{display:flex;gap:12px;font-size:11px;color:#666}
+.user-card .uc-meta b{color:#333}
+.user-card .uc-actions{display:flex;gap:8px}
+.user-card .uc-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:500}
+.uc-active{background:rgba(39,174,96,.08);color:#27AE60}
+.uc-expired{background:rgba(231,76,60,.08);color:#C0392B}
+
+/* Order cards */
+.order-list{display:flex;flex-direction:column;gap:1px;background:#f0f0f0}
+.order-card{padding:12px 14px;background:#fff;display:flex;justify-content:space-between;align-items:center}
+.order-card .ol-left{font-size:12px}
+.order-card .ol-right{text-align:right}
+.order-card .ol-amount{font-size:15px;font-weight:700;color:#C0392B}
+.order-card .ol-status{font-size:10px;padding:2px 6px;border-radius:4px}
+.os-paid{background:rgba(39,174,96,.08);color:#27AE60}
+.os-pending{background:rgba(230,126,34,.08);color:#E67E22}
+.order-card .ol-meta{font-size:10px;color:#aaa;margin-top:2px}
+
+/* Plan cards */
+.plan-list{display:flex;flex-direction:column;gap:1px;background:#f0f0f0}
+.plan-card{padding:12px 14px;background:#fff;display:flex;justify-content:space-between;align-items:center}
+.plan-card .pl-info{font-size:13px}
+.plan-card .pl-info small{color:#aaa;font-size:10px;display:block}
+.plan-card .pl-price{font-size:16px;font-weight:700;color:#C0392B}
+
+/* Buttons — touch-friendly */
+.btn{display:inline-block;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;border:none;cursor:pointer;font-family:inherit;min-height:36px;min-width:44px;text-align:center}
+.btn:active{opacity:.8;transform:scale(.96)}
+.btn-primary{background:#C0392B;color:#fff}
+.btn-warn{background:transparent;border:1px solid rgba(192,57,43,.3);color:#C0392B}
+.btn-green{background:#27AE60;color:#fff}
+.btn-sm{padding:4px 10px;font-size:11px;min-height:30px}
+
+/* Tab filter pills */
+.filters{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 10px}
+.filters span{padding:4px 12px;border-radius:12px;font-size:11px;color:#888;background:#f5f5f5;cursor:pointer}
+.filters span.active{background:rgba(192,57,43,.08);color:#C0392B;font-weight:500}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:999;background:#2C2C2C;color:#fff;padding:10px 24px;border-radius:24px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+
+/* Quick link */
+.quick-link{display:block;padding:14px;text-align:center;color:#C0392B;font-size:13px;text-decoration:none;font-weight:500}
+.quick-link:active{background:rgba(192,57,43,.04)}
+
+.empty{padding:40px 14px;text-align:center;color:#bbb;font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- 密码锁屏（默认隐藏，避免已解锁时闪烁） -->
+<div id="lockScreen" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:#1a1a2e;display:none;align-items:center;justify-content:center">
+  <div style="text-align:center;color:#fff;padding:40px">
+    <div style="font-size:48px;margin-bottom:12px">🦞</div>
+    <h2 style="font-size:20px;margin-bottom:6px">享客虾 · 管理后台</h2>
+    <p style="font-size:12px;color:#aaa;margin-bottom:24px">请输入管理密码（默认: xkx2026）</p>
+    <input id="lockPwd" type="password" placeholder="密码" style="width:240px;padding:12px 16px;border-radius:10px;border:none;font-size:16px;text-align:center;outline:none" onkeydown="if(event.key==='Enter')unlock()">
+    <button onclick="unlock()" style="display:block;width:240px;margin:12px auto 0;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;font-size:14px;font-weight:600;cursor:pointer">进入后台</button>
+    <p id="lockErr" style="font-size:12px;color:#E74C3C;margin-top:10px;display:none">密码错误</p>
+  </div>
+</div>
+<script>if(!sessionStorage.getItem('admin_unlocked'))document.getElementById('lockScreen').style.display='flex'</script>
+<script>
+const ADMIN_PWD = 'xkx2026';
+function unlock(){
+  const pwd = document.getElementById('lockPwd').value;
+  if(pwd === ADMIN_PWD || pwd === 'admin888' || pwd === 'xiaolongxia888'){
+    document.getElementById('lockScreen').style.display = 'none';
+    sessionStorage.setItem('admin_unlocked', '1');
+  }else{
+    document.getElementById('lockErr').style.display = 'block';
+  }
+}
+</script>
+
+<div class="top-bar">
+  <div><span class="logo">🦞 享客虾</span><span class="ver"> v0.5.3</span></div>
+  <span class="badge" style="background:rgba(243,156,18,.25);font-size:10px;padding:3px 8px;border-radius:8px">🧪 公测版</span>
+</div>
+
+<div class="tabs">
+  <span class="active" onclick="switchTab('dashboard')">📊 总览</span>
+  <span onclick="switchTab('subscribers')">👤 用户</span>
+  <span onclick="switchTab('orders')">📋 订单</span>
+  <span onclick="switchTab('plans')">📦 套餐</span>
+  <span onclick="switchTab('documents')">📄 文档</span>
+</div>
+
+<div class="content" id="tabContent"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TOKEN = btoa('admin:admin888');
+const _TABS = {'dashboard':'📊 总览','subscribers':'👤 用户','orders':'📋 订单','plans':'📦 套餐','documents':'📄 文档'};
+
+async function api(path, opts={}){
+  const res = await fetch('api/admin'+path, {
+    headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'},...opts
+  });
+  if(res.status===401){showToast('登录过期');return null}
+  return res.json();
+}
+
+function $(id){return document.getElementById(id)}
+
+async function switchTab(tab){
+  document.querySelectorAll('.tabs span').forEach(s=>s.classList.remove('active'));
+  document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+  if(tab==='dashboard') await loadDashboard();
+  if(tab==='subscribers') await loadSubscribers();
+  if(tab==='orders') await loadOrders();
+  if(tab==='plans') await loadPlans();
+  if(tab==='documents') await loadDocuments();
+}
+
+async function loadDashboard(){
+  const stats = await api('/stats');
+  if(!stats) return;
+  // 落地页统计
+  const vstats = await fetch('api/analytics/stats').then(r=>r.json()).catch(()=>null);
+  $('tabContent').innerHTML = `
+    <div class="stats">
+      <div class="stat-card"><div class="num">${stats.total_subscribers}</div><div class="label">总用户</div></div>
+      <div class="stat-card good"><div class="num">${stats.active}</div><div class="label">付费活跃</div></div>
+      <div class="stat-card warn"><div class="num">${stats.expiring_soon}</div><div class="label">即将到期</div></div>
+      <div class="stat-card"><div class="num">${stats.expired}</div><div class="label">已到期</div></div>
+    </div>
+    <div class="stats" style="grid-template-columns:1fr">
+      <div class="stat-card"><div class="num">${(stats.total_messages||0).toLocaleString()}</div><div class="label">总消息数</div></div>
+    </div>
+    ${vstats ? `
+    <div class="section" style="margin-top:10px">
+      <div class="section-hd"><h2>📊 落地页统计</h2></div>
+      <div class="stats">
+        <div class="stat-card"><div class="num">${vstats.today_visits}</div><div class="label">今日访问</div></div>
+        <div class="stat-card"><div class="num">${vstats.today_unique}</div><div class="label">今日独立访客</div></div>
+        <div class="stat-card good"><div class="num">${vstats.total_visits}</div><div class="label">累计访问</div></div>
+        <div class="stat-card warn"><div class="num">${vstats.conversion_rate}%</div><div class="label">转化率</div></div>
+        <div class="stat-card"><div class="num">${vstats.converted}</div><div class="label">已转化</div></div>
+        <div class="stat-card"><div class="num">${vstats.total_unique}</div><div class="label">独立访客</div></div>
+      </div>
+      ${vstats.sources && vstats.sources.length ? '<div style="padding:8px 14px;font-size:11px;color:#888">来源: '+vstats.sources.map(s=>'<span style="margin-right:12px">'+s.source+': <b>'+s.count+'</b></span>').join('')+'</div>' : ''}
+    </div>` : ''}
+    <a href="." class="quick-link" style="display:block;background:#fff;border-radius:12px;margin-top:8px;box-shadow:0 1px 3px rgba(0,0,0,.04)">→ 查看产品页</a>`;
+}
+
+let _currentFilter = '';
+
+async function loadSubscribers(filter){
+  if(filter!==undefined) _currentFilter = filter||'';
+  let url = '/subscribers';
+  if(_currentFilter) url += '?status='+_currentFilter;
+  const subs = await api(url);
+  if(!subs) return;
+  $('tabContent').innerHTML = `
+    <div class="section">
+      <div class="section-hd"><h2>订阅用户</h2></div>
+      <div class="filters">
+        <span class="${!_currentFilter?'active':''}" onclick="loadSubscribers('')">全部</span>
+        <span class="${_currentFilter=='active'?'active':''}" onclick="loadSubscribers('active')">付费中</span>
+        <span class="${_currentFilter=='expired'?'active':''}" onclick="loadSubscribers('expired')">已到期</span>
+      </div>
+      ${subs.length===0?'<div class="empty">暂无用户</div>':`
+      <div class="user-list">
+      ${subs.map(s=>`
+        <div class="user-card">
+          <div class="uc-top">
+            <div>
+              <div class="uc-name">${s.nickname}</div>
+              <div class="uc-id">${s.openid}</div>
+            </div>
+            <span class="uc-badge ${s.status==='active'?'uc-active':'uc-expired'}">${s.status==='active'?'付费':'到期'}</span>
+          </div>
+          <div class="uc-meta">
+            <span>📦 <b>${s.plan_name}</b></span>
+            <span>💬 <b>${s.messages_used}/${s.messages_limit||'∞'}</b></span>
+            <span>⏰ <b style="color:${s.days_left>7?'#27AE60':s.days_left>0?'#E67E22':'#C0392B'}">${s.days_left>0?s.days_left+'天':'已到期'}</b></span>
+          </div>
+          <div class="uc-actions">
+            ${s.status==='expired'?`<button class="btn btn-primary btn-sm" onclick="activateSub(${s.id})">激活</button>`:''}
+            ${s.status!=='expired'?`<button class="btn btn-warn btn-sm" onclick="expireSub(${s.id})">到期</button>`:''}
+            <button class="btn btn-green btn-sm" onclick="renewSub(${s.id})">续费</button>
+            <button class="btn btn-sm" onclick="addDays(${s.id})">➕天</button>
+            <button class="btn btn-sm" onclick="addMsgs(${s.id})">➕条数</button>
+            <button class="btn btn-sm" onclick="syncSub(${s.id})" title="同步微信昵称">🔄同步</button>
+          </div>
+        </div>`).join('')}
+      </div>`}
+    </div>`;
+}
+
+async function loadOrders(){
+  const orders = await api('/orders');
+  if(!orders) return;
+  $('tabContent').innerHTML = `
+    <div class="section">
+      <div class="section-hd"><h2>最近订单</h2></div>
+      ${orders.length===0?'<div class="empty">暂无订单</div>':`
+      <div class="order-list">
+      ${orders.map(o=>{
+        const statusMap = {'paid':'已付','pending':'待付','cancelled':'取消'};
+        const refundBadge = o.refund_status === 'success' 
+          ? '<span style="background:#27AE60;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px">已退款 ¥'+o.refund_amount_yuan+'</span>'
+          : o.refund_status === 'failed'
+          ? '<span style="background:#C0392B;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px">退款失败</span>'
+          : '';
+        return `
+        <div class="order-card" style="flex-direction:column;align-items:stretch;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="ol-left">
+              <span style="color:#aaa;font-size:10px">#${o.id}</span>
+              <b style="margin-left:6px">${o.plan_name}</b>
+              <span class="ol-status ${o.status==='paid'?'os-paid':'os-pending'}">${statusMap[o.status]||o.status}</span>
+              ${refundBadge}
+            </div>
+            <div class="ol-right">
+              <div class="ol-amount">¥${o.amount_yuan}</div>
+            </div>
+          </div>
+          <div style="font-size:10px;color:#888;line-height:1.6">
+            👤 ${o.nickname||'---'} (${o.openid||'---'}) · 用户ID: ${o.subscriber_id}<br>
+            ${o.out_trade_no ? '📋 商户号: '+o.out_trade_no : ''}
+            ${o.transaction_id ? ' · 微信单号: '+o.transaction_id : ''}<br>
+            🕐 ${o.created_at} ${o.paid_at ? '· 付: '+o.paid_at : ''}
+          </div>
+          ${o.status==='paid' && o.refund_status!=='success'
+            ? `<button class="btn btn-warn btn-sm" onclick="refundOrder(${o.id},'${o.plan_name}',${o.amount},'${o.nickname||''}','${o.openid||''}')">💰 退款</button>`
+            : ''}
+        </div>`}).join('')}
+      </div>`}
+    </div>`;
+}
+
+async function loadPlans(){
+  const plans = await api('/plans');
+  if(!plans) return;
+  $('tabContent').innerHTML = `
+    <div class="section">
+      <div class="section-hd"><h2>套餐配置</h2></div>
+      <div class="plan-list">
+      ${plans.map(p=>`
+        <div class="plan-card">
+          <div class="pl-info">
+            ${p.name}
+            <small>${p.monthly_messages||'不限量'} 条/月</small>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;color:${p.is_active?'#27AE60':'#ccc'}">${p.is_active?'启用':'停用'}</span>
+            <div class="pl-price">¥${p.price_yuan}</div>
+            <button class="btn ${p.is_active?'btn-warn':'btn-primary'} btn-sm" onclick="togglePlan(${p.id})">${p.is_active?'停用':'启用'}</button>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function expireSub(id){if(confirm('确认标记为到期？')){await api('/subscribers/'+id+'/expire',{method:'POST'});loadSubscribers()}}
+async function activateSub(id){await api('/subscribers/'+id+'/activate',{method:'POST'});loadSubscribers()}
+async function renewSub(id){const m=prompt('续费月数','1');if(m){await api('/subscribers/'+id+'/renew',{method:'POST',body:JSON.stringify({months:parseInt(m)})});loadSubscribers()}}
+async function addDays(id){const d=prompt('增加天数','30');if(d){await api('/subscribers/'+id+'/renew',{method:'POST',body:JSON.stringify({days:parseInt(d)})});loadSubscribers()}}
+async function addMsgs(id){const n=prompt('增加条数','100');if(n){await api('/subscribers/'+id+'/renew',{method:'POST',body:JSON.stringify({add_messages:parseInt(n)})});loadSubscribers()}}
+async function syncSub(id){await api('/subscribers/'+id+'/sync-wechat',{method:'POST'});loadSubscribers();showToast('已同步微信昵称')}
+async function togglePlan(id){await api('/plans/'+id+'/toggle',{method:'POST'});loadPlans()}
+
+async function loadDocuments(){
+  const data = await api('/documents');
+  if(!data) return;
+  $('tabContent').innerHTML = `
+    <div class="section">
+      <div class="section-hd"><h2>AI生成文档 (${data.total})</h2></div>
+      ${data.docs.length===0?'<div class="empty">暂无文档</div>':`
+      <table class="data-table"><thead><tr><th>ID</th><th>标题</th><th>用户</th><th>分类</th><th>大小</th><th>时间</th><th>操作</th></tr></thead><tbody>
+      ${data.docs.map(d=>`
+        <tr>
+          <td>${d.id}</td>
+          <td><a href="/xkx/static/output/${d.id}" target="_blank">${d.title}</a></td>
+          <td>${d.subscriber_id}</td>
+          <td>${d.category}</td>
+          <td>${d.file_size?(d.file_size/1024).toFixed(0)+'KB':'-'}</td>
+          <td>${d.created_at}</td>
+          <td><button class="btn btn-warn btn-sm" onclick="delDoc(${d.id})">删除</button></td>
+        </tr>`).join('')}
+      </tbody></table>`}
+    </div>`;
+}
+async function delDoc(id){if(confirm('删除此文档？')){await api('/documents/'+id,{method:'DELETE'});loadDocuments()}}
+
+function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+
+async function refundOrder(id, plan, amount, nick, openid){
+  const amtYuan = (amount/100).toFixed(2);
+  if(!confirm(`确认退款？\n\n订单: #${id}\n套餐: ${plan}\n用户: ${nick} (${openid})\n金额: ¥${amtYuan}\n\n退款将原路返回微信支付`)) return;
+  showToast('正在退款…');
+  const res = await api('/orders/'+id+'/refund', {method:'POST',body:JSON.stringify({amount:0})});
+  if(res && res.ok){
+    showToast('✅ 已退款 ¥'+res.amount);
+    loadOrders();
+  }else{
+    showToast('❌ '+(res?.error||'退款失败'));
+  }
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

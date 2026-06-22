@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>享客虾 · 微信 Bot 扫码</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+}
+.container {
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 40px;
+  text-align: center;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+h1 { font-size: 22px; margin-bottom: 8px; }
+.subtitle { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 24px; }
+.qr-box {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  display: inline-block;
+  margin-bottom: 16px;
+  position: relative;
+}
+.qr-box img {
+  width: 240px;
+  height: 240px;
+  display: block;
+}
+.status {
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 15px;
+  margin: 16px 0;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.status.waiting {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.8);
+}
+.status.scanned {
+  background: rgba(46,213,115,0.2);
+  color: #2ed573;
+  border: 1px solid rgba(46,213,115,0.3);
+}
+.status.error {
+  background: rgba(255,71,87,0.2);
+  color: #ff4757;
+  border: 1px solid rgba(255,71,87,0.3);
+}
+.status.expired {
+  background: rgba(255,165,0,0.15);
+  color: #ffa500;
+  border: 1px solid rgba(255,165,0,0.3);
+}
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.bot-info {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(46,213,115,0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(46,213,115,0.3);
+  display: none;
+}
+.bot-info .label { font-size: 12px; color: rgba(255,255,255,0.5); }
+.bot-info .value { font-size: 14px; color: #fff; word-break: break-all; }
+.bot-info .nickname { font-size: 18px; font-weight: bold; color: #2ed573; margin: 4px 0; }
+.count { color: rgba(255,255,255,0.3); font-size: 12px; margin-top: 12px; }
+.footer { margin-top: 20px; font-size: 12px; color: rgba(255,255,255,0.3); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🤖 微信 Bot 扫码</h1>
+  <div class="subtitle">用微信扫描下方二维码绑定机器人</div>
+  <div class="qr-box">
+    <img id="qrImage" src="" alt="二维码">
+  </div>
+  <div id="status" class="status waiting">
+    <span class="spinner"></span> 等待扫码...
+  </div>
+  <div id="botInfo" class="bot-info"></div>
+  <div class="count" id="count"></div>
+  <div class="footer">享客虾 Bot 网关 · 过期自动续码</div>
+</div>
+
+<script>
+const API_BASE = "/api/bot";
+let currentQR = '';
+let pollCount = 0;
+let qrRefreshCount = 0;
+
+async function init() {
+  await fetchNewQR();
+  poll();
+}
+
+async function fetchNewQR() {
+  try {
+    const resp = await fetch(`${API_BASE}/qrcode`);
+    const data = await resp.json();
+    if (data.success) {
+      currentQR = data.qrcode_value;
+      document.getElementById('qrImage').src = `${API_BASE}/qrcode/image?value=${currentQR}&_t=${Date.now()}`;
+      qrRefreshCount++;
+      setStatus('waiting', `<span class="spinner"></span> 等待扫码...`);
+    }
+  } catch (e) {
+    setStatus('error', '❌ 网络错误');
+  }
+}
+
+async function poll() {
+  while (true) {
+    pollCount++;
+    document.getElementById('count').textContent = `刷新 #${pollCount} · 续码 #${qrRefreshCount}`;
+    
+    try {
+      const resp = await fetch(`${API_BASE}/qrcode/status?qrcode=${currentQR}`);
+      const data = await resp.json();
+
+      if (data.scanned) {
+        // 扫码成功！
+        setStatus('scanned', '✅ 扫码成功！正在注册...');
+        
+        // 注册到网关
+        const user_id = data.user_id || '';
+        const regResp = await fetch(`${API_BASE}/register`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            bot_id: data.bot_id,
+            bot_token: data.bot_token,
+            user_id: user_id,
+            nickname: data.nickname || '新Bot',
+          })
+        });
+        const reg = await regResp.json();
+        
+        // 启动连接器
+        const startResp = await fetch(`${API_BASE}/${data.bot_id}/start`, {method: 'POST'});
+        const start = await startResp.json();
+
+        const botInfo = document.getElementById('botInfo');
+        botInfo.style.display = 'block';
+        botInfo.innerHTML = `
+          <div class="nickname">👤 ${data.nickname || '新Bot'}</div>
+          <div class="label">Bot ID</div>
+          <div class="value">${data.bot_id}</div>
+          <div style="margin-top:8px;font-size:14px;color:#2ed573">✅ ${reg.message}</div>
+          <div style="font-size:14px;color:${start.success?'#2ed573':'#ff4757'}">${start.success ? '✅ 连接器已启动' : '❌ 启动失败'}</div>
+        `;
+        setStatus('scanned', '✅ 扫码成功！Bot 已上线');
+        return;
+      }
+      
+      if (data.expired) {
+        // 不过期自动续了，让用户手动点刷新
+        setStatus('expired', '⏰ 二维码已过期 · <a href="javascript:location.reload()" style="color:#ffa500;font-weight:bold">点击刷新换一张</a>');
+        return;
+      } else if (data.status === 'scaned_but_redirect') {
+        setStatus('waiting', '📱 已扫码，请在微信上确认...');
+      } else {
+        // 继续等
+      }
+    } catch (e) {
+      setStatus('error', '⚠️ 网络异常，重试中...');
+      await sleep(3000);
+      setStatus('waiting', `<span class="spinner"></span> 等待扫码...`);
+    }
+    await sleep(3000);
+  }
+}
+
+function setStatus(type, msg) {
+  const el = document.getElementById('status');
+  el.className = 'status ' + type;
+  el.innerHTML = msg;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+init();
+</script>
+</body>
+</html>
