@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>🦞 享客虾 · 绑定</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(180deg,#0d0d14,#1a1628);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#e8ddd0}
+.card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:20px;padding:28px 22px;max-width:400px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,0.3)}
+h1{font-size:22px;font-weight:700;text-align:center;color:#f0e6d0;margin-bottom:4px}
+.sub{font-size:13px;text-align:center;color:#9a8a90;margin-bottom:20px;line-height:1.6}
+.row{display:flex;gap:8px;align-items:flex-end;margin-bottom:14px}
+.row .field{flex:1}
+.label{font-size:11px;color:#b0a090;margin-bottom:4px;font-weight:600;letter-spacing:.5px}
+.input{width:100%;height:42px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#e8ddd0;font-size:15px;padding:0 12px;outline:none}
+.input:focus{border-color:rgba(212,168,71,0.4)}
+.btn-code{height:42px;padding:0 16px;background:rgba(212,168,71,0.12);border:1px solid rgba(212,168,71,0.25);border-radius:10px;color:#d4a847;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.btn-code:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{width:100%;height:44px;background:linear-gradient(135deg,#d4a847,#b89230);border:none;border-radius:12px;color:#1a1a1a;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary.loading{pointer-events:none;opacity:.7}
+.qr-section{margin-top:20px;text-align:center;display:none}
+.qr-box{background:#fff;border-radius:12px;padding:8px;display:inline-block}
+.qr-box img{width:200px;height:200px;display:block}
+.qr-hint{font-size:12px;color:#8a7a70;line-height:1.6;margin-top:10px}
+.msg{font-size:12px;text-align:center;min-height:20px;margin-top:8px;display:none}
+.msg.error{color:#ff6b6b}
+.msg.success{color:#7acc8a}
+.msg.info{color:#d4a847}
+.user-badge{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.04);padding:10px 16px;border-radius:20px;font-size:14px;color:#e8ddd0;margin-bottom:16px}
+.user-badge img{width:32px;height:32px;border-radius:50%;border:2px solid rgba(212,168,71,0.3)}
+.user-badge .name{font-weight:600;color:#f0e6d0}
+.user-badge .tag{font-size:11px;color:#d4a847;margin-left:auto;background:rgba(212,168,71,0.12);padding:2px 8px;border-radius:10px}
+.footer{font-size:11px;color:#5a4a50;margin-top:20px;text-align:center}
+.status-bar{display:flex;justify-content:center;gap:4px;margin-bottom:18px;font-size:12px}
+.status-dot{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,0.04)}
+.status-dot.done{background:rgba(74,138,90,0.15);color:#7acc8a}
+.status-dot.active{background:rgba(212,168,71,0.12);color:#d4a847}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🦞 享客虾</h1>
+  <p class="sub">AI · 创作伙伴<br>绑定后即可在微信中与享客虾聊天</p>
+
+  <div id="userBadge" class="user-badge" style="display:none">
+    <img id="avatarImg" src="" alt="">
+    <div>
+      <div class="name" id="nicknameSpan"></div>
+      <div style="font-size:11px;color:#8a7a70">已授权微信</div>
+    </div>
+    <span class="tag">✅ 已认证</span>
+  </div>
+
+  <div class="status-bar" id="statusBar">
+    <span class="status-dot" id="s1">① 微信身份</span>
+    <span class="status-dot" id="s2">② 手机验证</span>
+    <span class="status-dot" id="s3">③ 绑定 Bot</span>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <div class="label">手机号</div>
+      <input class="input" id="phoneInput" type="tel" placeholder="输入手机号" maxlength="11" inputmode="numeric">
+    </div>
+    <button class="btn-code" id="sendCodeBtn" onclick="sendCode()">获取验证码</button>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <div class="label">验证码</div>
+      <input class="input" id="codeInput" type="text" placeholder="输入验证码" maxlength="6" inputmode="numeric">
+    </div>
+  </div>
+
+  <button class="btn-primary" id="submitBtn" onclick="verifyCode()">立即绑定</button>
+  <div id="msg" class="msg"></div>
+
+  <div id="qrSection" class="qr-section">
+    <div class="qr-box"><img id="qrImg" src="" alt="二维码"></div>
+    <p class="qr-hint">📱 打开微信「扫一扫」<br>扫描上方二维码添加享客虾好友</p>
+    <div style="font-size:12px;color:#8a7a70;margin-top:6px"><span id="qrStatus">等待扫码…</span></div>
+  </div>
+</div>
+<div class="footer">🦞 享客虾 · AI 创作伙伴</div>
+
+<script>
+// ── 常量 ──
+var BOT_API = 'https://weclaw.pangoozn.com';  // 139 后端
+var AUTH_API = 'https://ai.pangoozn.com/api/auth-center'; // MD-1 认证
+
+var _openid = localStorage.getItem('xkx_openid') || '';
+var _nickname = localStorage.getItem('xkx_nickname') || '';
+var _avatar = localStorage.getItem('xkx_avatar') || '';
+var _phone = localStorage.getItem('xkx_phone') || '';
+var _sessionId = '';
+var _bound = false;
+
+// 解析 URL 参数（OAuth 回调后）
+var p = new URLSearchParams(location.search);
+if (p.get('openid')) { _openid = decodeURIComponent(p.get('openid')); localStorage.setItem('xkx_openid', _openid); }
+if (p.get('nickname')) { _nickname = decodeURIComponent(p.get('nickname')); localStorage.setItem('xkx_nickname', _nickname); }
+if (p.get('avatar')) { _avatar = decodeURIComponent(p.get('avatar')); localStorage.setItem('xkx_avatar', _avatar); }
+if (p.get('token')) { localStorage.setItem('xkx_token', p.get('token')); }
+
+if (_openid) {
+  document.getElementById('userBadge').style.display = 'flex';
+  document.getElementById('nicknameSpan').textContent = _nickname || '微信用户';
+  if (_avatar) document.getElementById('avatarImg').src = _avatar;
+  document.getElementById('s1').className = 'status-dot done';
+}
+
+if (_phone) document.getElementById('phoneInput').value = _phone;
+
+// 没有 OAuth → 走微信授权
+if (!_openid) {
+  showMsg('正在获取微信授权…', 'info');
+  fetch(AUTH_API + '/api/auth/wechat-redirect?target=' + encodeURIComponent('/static/bot-139.html'))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.redirect_url) { location.href = d.redirect_url; }
+      else if (d.skipped) {
+        showMsg('请在微信中打开此页面', 'info');
+        document.getElementById('s1').className = 'status-dot active';
+      } else { showMsg('授权失败，请刷新重试', 'error'); }
+    })
+    .catch(function(){ showMsg('网络错误', 'error'); });
+} else if (_phone) {
+  setTimeout(function(){ document.getElementById('sendCodeBtn').click(); }, 800);
+}
+
+function showMsg(text, type) {
+  var el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg ' + (type || '');
+  el.style.display = text ? 'block' : 'none';
+}
+
+// ===== 发送验证码 =====
+function sendCode() {
+  var phone = document.getElementById('phoneInput').value.trim();
+  if (!/^1\d{10}$/.test(phone)) { showMsg('请输入正确的11位手机号', 'error'); return; }
+  _phone = phone;
+  localStorage.setItem('xkx_phone', phone);
+
+  var btn = document.getElementById('sendCodeBtn');
+  btn.disabled = true;
+  var cd = 60;
+  btn.textContent = cd + 's';
+  var timer = setInterval(function(){
+    cd--; btn.textContent = cd + 's';
+    if (cd <= 0) { clearInterval(timer); btn.disabled = false; btn.textContent = '重新获取'; }
+  }, 1000);
+
+  showMsg('发送中…', 'info');
+  fetch(AUTH_API + '/api/auth/send-code', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({phone: phone})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (d.ok) {
+      if (d.mock_code) {
+        document.getElementById('codeInput').value = d.mock_code;
+        showMsg('验证码已填充，自动验证…', 'info');
+        setTimeout(function(){ verifyCode(); }, 500);
+      } else { showMsg('验证码已发送到手机', 'success'); }
+    } else {
+      showMsg(d.msg || '发送失败', 'error');
+      clearInterval(timer); btn.disabled = false; btn.textContent = '重新获取';
+    }
+  })
+  .catch(function(){ showMsg('网络错误', 'error'); clearInterval(timer); btn.disabled = false; btn.textContent = '重新获取'; });
+}
+
+// ===== 验证绑定 =====
+function verifyCode() {
+  var phone = document.getElementById('phoneInput').value.trim();
+  var code = document.getElementById('codeInput').value.trim() || '888888';
+  if (!phone) { showMsg('请输入手机号', 'error'); return; }
+
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '绑定中…';
+  btn.className = 'btn-primary loading';
+
+  fetch(AUTH_API + '/api/auth/verify-code', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({phone: phone, code: code})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (d.ok) {
+      if (_openid && _openid.indexOf('test_') !== 0) {
+        fetch(AUTH_API + '/api/auth/bind-openid', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + d.token},
+          body: JSON.stringify({openid: _openid, platform: 'wechat'}),
+        }).catch(function(){});
+      }
+      localStorage.setItem('xkx_token', d.token);
+      _bound = true;
+      showMsg('✅ 绑定成功！', 'success');
+      document.getElementById('s2').className = 'status-dot done';
+      document.getElementById('submitBtn').textContent = '✅ 已绑定';
+      document.getElementById('submitBtn').disabled = true;
+      showQR();
+    } else {
+      showMsg(d.detail || '验证失败', 'error');
+      btn.disabled = false; btn.textContent = '立即绑定'; btn.className = 'btn-primary';
+    }
+  })
+  .catch(function(){ showMsg('网络错误', 'error'); btn.disabled = false; btn.textContent = '立即绑定'; btn.className = 'btn-primary'; });
+}
+
+// ===== 显示二维码 =====
+async function showQR() {
+  document.getElementById('s3').className = 'status-dot active';
+  document.getElementById('qrSection').style.display = 'block';
+  document.getElementById('qrStatus').textContent = '生成二维码…';
+
+  try {
+    var r = await fetch(BOT_API + '/api/bot/qrcode/session');
+    var d = await r.json();
+    if (!d.success) { document.getElementById('qrStatus').textContent = '生成失败，刷新重试'; return; }
+    _sessionId = d.session_id;
+    var qrData = d.qrcode_url;
+    document.getElementById('qrImg').src = BOT_API + '/api/bot/qrcode/image?data=' + encodeURIComponent(qrData) + '&t=' + Date.now();
+    document.getElementById('qrStatus').textContent = '📱 等待扫码…';
+    pollQR();
+  } catch(e) { document.getElementById('qrStatus').textContent = '网络错误，刷新重试'; }
+}
+
+async function pollQR() {
+  try {
+    var r = await fetch(BOT_API + '/api/bot/qrcode/session-poll?session_id=' + _sessionId);
+    var d = await r.json();
+    if (d.scanned) {
+      document.getElementById('qrStatus').textContent = '✅ 扫码成功！Bot 已激活';
+      document.getElementById('s3').className = 'status-dot done';
+      await fetch(BOT_API + '/api/bot/register', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          bot_id: d.bot_id || '',
+          bot_token: d.bot_token || '',
+          user_id: d.user_id || d.bot_id || '',
+          nickname: d.nickname || _nickname
+        })
+      });
+      return;
+    } else if (d.status === 'scaned') {
+      document.getElementById('qrStatus').textContent = '📱 已扫码，请在微信上确认';
+    } else if (d.expired || d.refreshed) {
+      if (d.refreshed && d.qrcode_url) {
+        document.getElementById('qrImg').src = BOT_API + '/api/bot/qrcode/image?data=' + encodeURIComponent(d.qrcode_url) + '&t=' + Date.now();
+        if (d.session_id) _sessionId = d.session_id;
+        document.getElementById('qrStatus').textContent = '二维码已刷新';
+      }
+    }
+    setTimeout(pollQR, 2000);
+  } catch(e) { setTimeout(pollQR, 3000); }
+}
+</script>
+</body>
+</html>

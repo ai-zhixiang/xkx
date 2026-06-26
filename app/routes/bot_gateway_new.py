@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS bot_accounts (
 );
 """
 
+
 # ===== Pydantic Models =====
 
 class BotRegisterRequest(BaseModel):
@@ -67,6 +68,7 @@ class BotRegisterResponse(BaseModel):
 class BotListResponse(BaseModel):
     bots: list[dict]
     total: int
+
 
 # ===== 短链接绑定 =====
 
@@ -96,6 +98,7 @@ async def bind_redirect(code: str):
     bind_param = f"{channel_type}:{channel_user_id}"
     redirect_url = f"https://hai.pangoozn.com/static/hai.html?bind={urllib.parse.quote(bind_param)}"
     return RedirectResponse(url=redirect_url)
+
 
 @router.post("/bind")
 async def bind_channel(data: dict):
@@ -131,6 +134,7 @@ async def bind_channel(data: dict):
         logger.exception(f"通道绑定失败: {e}")
         return {"success": False, "error": str(e)}
 
+
 @router.post("/bind/code")
 async def create_bind_code(data: dict):
     """生成绑定短码"""
@@ -141,6 +145,7 @@ async def create_bind_code(data: dict):
     code = _generate_bind_code()
     _bind_codes[code] = {"channel_type": channel_type, "channel_user_id": channel_user_id}
     return {"success": True, "code": code}
+
 
 # ===== Endpoints =====
 
@@ -188,6 +193,7 @@ async def register_bot(req: BotRegisterRequest):
         logger.exception(f"Bot 注册失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/list")
 async def list_bots():
     """列出所有注册的 Bot"""
@@ -218,6 +224,7 @@ async def list_bots():
         logger.exception(f"Bot 列表查询失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/{bot_id}/deactivate")
 async def deactivate_bot(bot_id: str):
     """停用某个 Bot"""
@@ -235,6 +242,7 @@ async def deactivate_bot(bot_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/qrcode")
 async def generate_qrcode():
     """生成 iLink 微信 Bot 二维码"""
@@ -244,6 +252,7 @@ async def generate_qrcode():
     # 同时生成图片
     await _save_qr_image(qr["qrcode_url"])
     return {"success": True, **qr}
+
 
 @router.get("/qrcode/image")
 async def qrcode_image(value: str = None):
@@ -269,10 +278,12 @@ async def qrcode_image(value: str = None):
     return Response(content=buf.getvalue(), media_type="image/png",
                     headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
+
 @router.get("/qrcode/status")
 async def check_qrcode_status(qrcode: str):
     """检查二维码扫描状态，已过期自动刷新"""
     return await _poll_single_qrcode(qrcode)
+
 
 async def _fetch_qrcode() -> Optional[dict]:
     """从 iLink 获取一张新二维码（带 local_token_list 告知需要替换的旧 Bot）"""
@@ -306,6 +317,7 @@ async def _fetch_qrcode() -> Optional[dict]:
         logger.exception("生成二维码失败")
         return None
 
+
 def _get_existing_bot_tokens() -> list:
     """收集所有已有 Bot 的 token，用于 QR 码请求中的 local_token_list"""
     tokens = []
@@ -326,6 +338,7 @@ def _get_existing_bot_tokens() -> list:
         logger.warning(f"读取已有 Bot tokens 失败: {e}")
     return tokens
 
+
 async def _save_qr_image(qrcode_url: str):
     """保存二维码图片到静态目录"""
     import qrcode as qrlib
@@ -337,6 +350,7 @@ async def _save_qr_image(qrcode_url: str):
         img.save(path)
     except Exception as e:
         logger.warning(f"保存QR图片失败: {e}")
+
 
 # ===== Session 级别的二维码追踪 =====
 import uuid as _uuid_lib
@@ -359,6 +373,7 @@ async def create_qr_session():
         "session_id": session_id,
         **qr,
     }
+
 
 @router.get("/qrcode/session-poll")
 async def poll_qr_session(session_id: str = ""):
@@ -398,6 +413,7 @@ async def poll_qr_session(session_id: str = ""):
                 }
     
     return {"success": True, "scanned": False, "status": "wait"}
+
 
 async def _poll_single_qrcode(qrcode: str) -> dict:
     """轮询二维码状态，过期自动刷新"""
@@ -453,6 +469,7 @@ async def _poll_single_qrcode(qrcode: str) -> dict:
                 return {"success": True, "scanned": False, "status": "wait"}
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
 
 @router.post("/activate")
 async def activate_bot(data: dict):
@@ -551,6 +568,7 @@ async def activate_bot(data: dict):
         logger.exception(f"[激活] 连接器启动失败: {e}")
         return {"success": True, "bot_id": bot_id, "message": f"Bot 已注册但连接器启动失败: {e}"}
 
+
 @router.get("/connector/status")
 async def connector_status():
     """所有 Bot 连接器的运行状态"""
@@ -575,6 +593,7 @@ async def connector_status():
             return {"bots": bots, "total": len(bots)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/{bot_id}/start")
 async def start_connector(bot_id: str):
@@ -629,6 +648,7 @@ async def start_connector(bot_id: str):
         logger.exception("启动连接器失败")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/{bot_id}/stop")
 async def stop_connector(bot_id: str):
     """停止 Bot 连接器进程"""
@@ -646,6 +666,7 @@ async def stop_connector(bot_id: str):
 
     (get_connectors_dir() / f"{bot_id}.pid").unlink(missing_ok=True)
     return {"success": True, "bot_id": bot_id, "message": "已停止"}
+
 
 @router.post("/v1/chat/completions")
 async def openai_chat_completions(data: dict):
@@ -694,6 +715,7 @@ async def openai_chat_completions(data: dict):
         }
     }
 
+
 async def bot_webhook_internal(bot_id: str, content: str, user_id: str) -> dict:
     """内部调用：处理消息并返回回复（含额度检查）"""
     if not content:
@@ -726,6 +748,7 @@ async def bot_webhook_internal(bot_id: str, content: str, user_id: str) -> dict:
         response = quota_result["welcome"] + "\n\n" + response
     
     return {"success": True, "response": f"🦞 {response}"}
+
 
 @router.post("/webhook")
 async def bot_webhook(data: dict):
@@ -841,6 +864,7 @@ async def bot_webhook(data: dict):
         "response": f"🦞 {response}",
     }
 
+
 async def _check_binding(channel_type: str, channel_user_id: str) -> dict:
     """检查通道绑定状态（直接查 DB，不走 HTTP 避免死锁）"""
     try:
@@ -857,6 +881,7 @@ async def _check_binding(channel_type: str, channel_user_id: str) -> dict:
     except Exception as e:
         logger.warning(f"[绑定检查] DB 查询失败: {e}")
     return {"bound": False}
+
 
 # ── 短信验证码接口 ──
 import random as _random
@@ -907,6 +932,7 @@ async def send_sms_code(data: dict):
     if sms_mock:
         result["mock_code"] = code
     return result
+
 
 @router.post("/verify-code")
 async def verify_sms_code(data: dict):
@@ -974,11 +1000,13 @@ async def verify_sms_code(data: dict):
         logger.exception(f"[verify-code] 绑定失败: {e}")
         return {"ok": False, "msg": f"绑定失败: {str(e)[:50]}"}
 
+
 @router.get("/member-status")
 async def member_status(openid: str = ""):
     """查会员状态"""
     result = await _check_membership(openid)
     return result
+
 
 @router.get("/check-bound")
 async def check_bound(openid: str = ""):
@@ -1043,6 +1071,7 @@ async def _check_membership(openid: str) -> dict:
         logger.warning(f"[会员检查] DB查询失败: {e}")
         return {"status": "none", "days_left": 0, "expires_at": None}
 
+
 def _should_remind_today(openid: str) -> bool:
     """检查今天是否已经提醒过。单日仅提醒一次。"""
     from datetime import date
@@ -1051,6 +1080,7 @@ def _should_remind_today(openid: str) -> bool:
         return False
     _remind_today[openid] = today
     return True
+
 
 RENEW_LINK = "https://dev.pangoozn.com/xkx/?action=renew"
 
@@ -1062,6 +1092,7 @@ def _membership_prefix(status: str, days_left: int, openid: str) -> str:
         return f"⚠️ 享客虾会员已过期，续费后可继续使用\n🔗 {RENEW_LINK}\n\n"
     return ""
 
+
 def _membership_suffix(status: str, days_left: int, openid: str) -> str:
     """生成会员状态后置文案（过期用户每次必带）"""
     if status == "expired":
@@ -1069,6 +1100,7 @@ def _membership_suffix(status: str, days_left: int, openid: str) -> str:
     if status == "expiring" and _should_remind_today(openid):
         return f"\n\n🦞 续费享客虾 → {RENEW_LINK}"
     return ""
+
 
 # ===== 内部逻辑 =====
 
@@ -1087,49 +1119,9 @@ def _match_code_phrase(text: str) -> str | None:
             return reply
     return None
 
+
 async def _route_to_ai(bot_id: str, user_id: str, content: str) -> str:
-    """路由消息到 AI 后端处理（含工具集路由）"""
-    # ── 工具集路由 ──
-    stripped = content.strip()
-    import re as _re_bazi
-
-    # 八字排盘
-    if any(kw in stripped for kw in ["排盘", "我的八字"]):
-        if any(kw in stripped for kw in ["解读", "解析", "分析", "深读"]):
-            pass
-        else:
-            try:
-                sys.path.insert(0, '/home/ubuntu/weclaw-1')
-                from app.bot.bazi_tool import get_bazi, format_bazi_result, format_hepan
-                dp = _re_bazi.search(r'(\d{4})[年\-/](\d{1,2})[月\-/]?(\d{1,2})[日]?(?:\s+(\d{1,2}))?[时]?', stripped)
-                if dp:
-                    y,m,d = int(dp.group(1)), int(dp.group(2)), int(dp.group(3))
-                    h = int(dp.group(4)) if dp.group(4) else 12
-                    g = "男" if "男" in stripped else ("女" if "女" in stripped else "未知")
-                    return format_bazi_result(get_bazi(y,m,d,h,g))
-                dps = _re_bazi.findall(r'(\d{4})[年\-/](\d{1,2})[月\-/](\d{1,2})', stripped)
-                if len(dps) >= 2 and ("合" in stripped or "婚" in stripped or "配" in stripped):
-                    y1,m1,d1 = int(dps[0][0]), int(dps[0][1]), int(dps[0][2])
-                    y2,m2,d2 = int(dps[1][0]), int(dps[1][1]), int(dps[1][2])
-                    g1 = "男" if "男" in stripped[:stripped.find(str(y1))] else ("女" if "女" in stripped else "A")
-                    g2 = "男" if "男" in stripped[stripped.find(str(y1)):] else ("女" if "女" in stripped else "B")
-                    return format_hepan(get_bazi(y1,m1,d1,12,g1), get_bazi(y2,m2,d2,12,g2))
-                return "输入格式示例：\n• 单排：1990年5月15日 12时 男\n• 合盘：1990-05-15 女 和 1988-08-20 男"
-            except Exception as e:
-                import logging
-                logging.getLogger(__name__).warning("[八字] 排盘失败: %s", str(e)[:100])
-                return "❌ 排盘失败，检查日期格式"
-
-    # 量化查询
-    if any(kw in stripped for kw in ["量化", "信号", "行情", "今天A股", "今天美股", "四市", "大盘"]):
-        try:
-            sys.path.insert(0, '/home/ubuntu/weclaw-1')
-            from app.bot.quant_tool import format_quant_summary
-            return format_quant_summary()
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning("[量化] 查询失败: %s", str(e)[:100])
-
+    """路由消息到 AI 后端处理"""
     from app.models import AsyncSessionLocal as async_session_factory
     from sqlalchemy import text as sa_text
     
@@ -1173,6 +1165,7 @@ async def _route_to_ai(bot_id: str, user_id: str, content: str) -> str:
         # 默认调 MD-1 Hermes API
         return await _call_hermes(content, user_id)
 
+
 async def _call_master_hermes(content: str, user_id: str) -> str:
     """调主站 Hermes Bridge（通过 hai.pangoozn.com/hermes-bridge/），即主脑"""
     master_url = "https://hai.pangoozn.com/hermes-bridge/v1/chat/completions"
@@ -1199,6 +1192,7 @@ async def _call_master_hermes(content: str, user_id: str) -> str:
         logger.exception(f"主站 Hermes 调用失败: {e}")
         return f"🤖 主脑连接失败"
 
+
 async def _call_hermes(content: str, user_id: str) -> str:
     """调 MD-1 Hermes API（通过 hermes_bridge，非 API Server）"""
     # Hermes bridge (port 8642) 是工作的 OpenAI 兼容端点
@@ -1212,7 +1206,7 @@ async def _call_hermes(content: str, user_id: str) -> str:
                 json={
                     "model": "hermes-shenzhen",
                     "messages": [
-                        {"role": "system", "content": "你是享客虾 AI 助手。回答简洁直接。\n📊 工具集: ❶八字排盘 ❷量化信号 ❸合盘对比。八字发「排盘1990年5月15日12时男」，量化发「信号」，合盘发「合盘1990-05-15女和1988-08-20男」。\n工具集: ❶八字排盘 ❷量化信号 ❸合盘对比。"},
+                        {"role": "system", "content": "你是享客虾 AI 助手。回答简洁直接。"},
                         {"role": "user", "content": content},
                     ],
                     "stream": False,
@@ -1227,6 +1221,7 @@ async def _call_hermes(content: str, user_id: str) -> str:
     except Exception as e:
         logger.exception(f"Hermes API 调用失败: {e}")
         return f"🤖 服务暂时不可用"
+
 
 async def _call_deepseek(content: str) -> str:
     """直接调 DeepSeek API"""

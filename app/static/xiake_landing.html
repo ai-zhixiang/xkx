@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<base href="/xkx/">
+<title>🦞 享客虾 · AI 创作伙伴</title>
+<style>
+/* ═══════════════ Reset & Base ═══════════════ */
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:system-ui,'PingFang SC','Microsoft YaHei',sans-serif;
+  background:linear-gradient(180deg,#F8F6F2 0%,#FFF 40%,#FFF 100%);
+  color:#2C2C2C;min-height:100vh;line-height:1.6;
+  -webkit-font-smoothing:antialiased
+}
+.container{max-width:420px;margin:0 auto;padding:20px 20px 40px}
+
+/* ═══════════════ Section Toggle ═══════════════ */
+.section{display:none}
+.section.active{display:block;animation:fadeUp .4s ease-out}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══════════════ Brand Header ═══════════════ */
+.brand-header{text-align:center;padding:16px 0 4px}
+.brand-header .logo-wrap{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:72px;height:72px;border-radius:50%;
+  background:linear-gradient(135deg,#C0392B,#A93226);
+  box-shadow:0 4px 16px rgba(192,57,43,.2);margin-bottom:4px
+}
+.brand-header .logo-wrap .emoji{font-size:36px;line-height:1}
+.brand-header h1{font-size:22px;font-weight:800;color:#2C2C2C;margin-top:6px;letter-spacing:1px}
+.brand-header .tagline{
+  font-size:13px;color:#999;margin-top:1px;
+  background:rgba(192,57,43,.06);display:inline-block;padding:2px 14px;
+  border-radius:20px;color:#C0392B;font-weight:500
+}
+
+/* ═══════════════ Steps ═══════════════ */
+.steps{display:flex;justify-content:center;gap:6px;margin:18px auto 20px;max-width:300px}
+.step{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;position:relative}
+.step::after{
+  content:'';position:absolute;top:14px;left:55%;width:90%;height:2px;
+  background:#e8e0d8;z-index:0;transition:background .4s
+}
+.step.done::after{background:#27AE60}
+.step:last-child::after{display:none}
+.step .dot{
+  width:28px;height:28px;border-radius:50%;background:#f0ebe4;
+  display:flex;align-items:center;justify-content:center;font-size:12px;
+  font-weight:700;position:relative;z-index:1;color:#bbb;
+  border:2px solid #e8e0d8;transition:all .4s cubic-bezier(.4,0,.2,1)
+}
+.step .dot.active{background:#C0392B;color:#fff;border-color:#C0392B;transform:scale(1.1);box-shadow:0 0 0 4px rgba(192,57,43,.12)}
+.step .dot.done{background:#27AE60;color:#fff;border-color:#27AE60;transform:scale(1)}
+.step .label{font-size:11px;color:#bbb;font-weight:500;transition:all .3s}
+.step .label.active{color:#C0392B;font-weight:700}
+.step .label.done{color:#27AE60}
+
+/* ═══════════════ Card (Steps) ═══════════════ */
+.card{
+  background:#fff;border-radius:18px;padding:28px 24px 24px;
+  border:1px solid rgba(192,57,43,.06);box-shadow:0 2px 16px rgba(0,0,0,.04);
+  margin-bottom:14px;display:none;position:relative;overflow:hidden
+}
+.card.active{display:block;animation:fadeUp .4s ease-out}
+.card .icon{font-size:36px;text-align:center;margin-bottom:4px}
+.card h2{text-align:center;font-size:18px;font-weight:700;color:#2C2C2C}
+.card .desc{text-align:center;font-size:13px;color:#999;margin-bottom:18px;line-height:1.6}
+
+/* ── Profile ── */
+.profile-wrap{text-align:center;margin:8px 0 4px;animation:fadeIn .5s ease-out}
+.profile-wrap .avatar-frame{
+  display:inline-block;width:60px;height:60px;border-radius:50%;
+  border:2.5px solid #C0392B;padding:2px;margin-bottom:6px
+}
+.profile-wrap .avatar-frame img{width:100%;height:100%;border-radius:50%;display:block}
+.profile-wrap .name{font-size:17px;font-weight:700;color:#2C2C2C}
+.profile-wrap .badge{font-size:12px;color:#27AE60;font-weight:500;margin-top:2px}
+.profile-wrap .badge .check{display:inline-block;width:16px;height:16px;background:#27AE60;border-radius:50%;color:#fff;font-size:10px;line-height:16px;text-align:center;margin-right:4px}
+
+/* ── Loading ── */
+.loading-dots{display:inline-flex;gap:4px;align-items:center}
+.loading-dots span{width:6px;height:6px;border-radius:50%;background:#ccc;animation:pulse 1.2s ease-in-out infinite}
+.loading-dots span:nth-child(2){animation-delay:.2s}
+.loading-dots span:nth-child(3){animation-delay:.4s}
+
+/* ── Form ── */
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;color:#888;font-weight:600;margin-bottom:5px}
+.input-row{display:flex;gap:8px}
+.input-row input, .form-input{
+  flex:1;padding:13px 16px;border-radius:12px;border:1.5px solid #e8e0d8;
+  font-size:16px;outline:none;transition:all .2s;background:#FAFAFA;color:#333;width:100%
+}
+.input-row input:focus, .form-input:focus{
+  border-color:#C0392B;box-shadow:0 0 0 3px rgba(192,57,43,.08);background:#fff
+}
+.input-row input::placeholder, .form-input::placeholder{color:#bbb}
+.input-row input:disabled{opacity:.5;background:#f0f0f0}
+
+.btn-code{
+  padding:12px 16px;border-radius:12px;border:1.5px solid #C0392B;
+  background:#fff;color:#C0392B;font-size:13px;font-weight:600;
+  cursor:pointer;white-space:nowrap;min-width:104px;transition:all .2s;
+  letter-spacing:.3px
+}
+.btn-code:active{background:#fef0ee;transform:scale(.97)}
+.btn-code:disabled{opacity:.35;cursor:not-allowed;background:#f5f5f5;border-color:#ddd;color:#bbb}
+
+/* ── Buttons ── */
+.btn-primary{
+  width:100%;padding:15px;border-radius:14px;border:none;
+  background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;
+  font-size:16px;font-weight:700;cursor:pointer;transition:all .2s;
+  letter-spacing:.5px;box-shadow:0 4px 12px rgba(192,57,43,.25);
+  position:relative;overflow:hidden
+}
+.btn-primary:active{transform:scale(.98);opacity:.9}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;transform:none}
+.btn-secondary{
+  width:100%;padding:12px;border-radius:14px;border:1.5px solid #e8e0d8;
+  background:#fff;color:#888;font-size:14px;cursor:pointer;margin-top:8px;transition:all .15s
+}
+.btn-secondary:active{background:#f8f6f2}
+
+/* ── Messages ── */
+.msg{font-size:13px;padding:10px 16px;border-radius:10px;margin-bottom:16px;display:none;line-height:1.5;animation:slideDown .25s ease-out}
+.msg.success{display:block;background:rgba(39,174,96,.07);color:#27AE60;border:1px solid rgba(39,174,96,.12)}
+.msg.error{display:block;background:rgba(192,57,43,.05);color:#C0392B;border:1px solid rgba(192,57,43,.08)}
+.msg.info{display:block;background:rgba(212,168,83,.06);color:#a08030;border:1px solid rgba(212,168,83,.1)}
+
+/* ── Price Cards ── */
+.price-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.price-card{
+  text-align:center;padding:18px 12px 16px;border-radius:14px;cursor:pointer;
+  background:#FDF8F6;border:2px solid transparent;transition:all .25s;
+  position:relative
+}
+.price-card:hover{background:#fdf5f2}
+.price-card.selected{border-color:#C0392B;background:#fff5f2;box-shadow:0 0 0 3px rgba(192,57,43,.06)}
+.price-card .badge-hot{
+  position:absolute;top:-8px;right:-4px;background:linear-gradient(135deg,#E74C3C,#C0392B);
+  color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;
+  box-shadow:0 2px 4px rgba(192,57,43,.2)
+}
+.price-card .label-top{font-size:11px;color:#888;margin-bottom:2px}
+.price-card .price{font-size:32px;font-weight:800;color:#2C2C2C}
+.price-card .price .symbol{font-size:16px;color:#888}
+.price-card .price .num{color:#C0392B}
+.price-card .per{font-size:13px;color:#888}
+.price-card .save{font-size:11px;color:#C0392B;font-weight:600;margin-top:4px}
+.price-card .unit{font-size:13px;color:#999}
+
+/* ── Status Alert ── */
+.alert{border-radius:14px;padding:16px 18px;margin-bottom:18px;animation:slideDown .3s ease-out}
+.alert-active{background:rgba(39,174,96,.06);border:1px solid rgba(39,174,96,.12);text-align:center}
+.alert-active .big-icon{font-size:32px;display:block;margin-bottom:4px}
+.alert-active .big{font-size:17px;font-weight:700;color:#27AE60}
+.alert-active .sub{font-size:12px;color:#888;margin-top:4px}
+.alert-expired{background:rgba(192,57,43,.04);border:1px solid rgba(192,57,43,.08);text-align:center}
+.alert-expired .big-icon{font-size:28px;display:block;margin-bottom:2px}
+.alert-expired .big{font-size:15px;font-weight:600;color:#C0392B}
+.alert-expired .sub{font-size:12px;color:#888;margin-top:2px}
+
+/* ── QR ── */
+.qr-section{text-align:center;margin-top:8px}
+.qr-wrap{
+  background:#fff;border-radius:14px;padding:8px;display:inline-block;
+  margin:6px auto;box-shadow:0 4px 16px rgba(0,0,0,.06);
+  border:1px solid #f0ebe4
+}
+.qr-wrap img{width:170px;height:170px;display:block;border-radius:8px}
+.qr-hint{font-size:12px;color:#888;line-height:1.7;margin-top:8px}
+.qr-hint strong{color:#C0392B}
+
+/* ── Success ── */
+.success-block{text-align:center;padding:8px 0}
+.success-block .big-icon{font-size:52px;display:block;margin-bottom:4px;animation:pulse 1.5s ease-in-out infinite}
+.success-block h3{font-size:20px;font-weight:700;color:#27AE60;margin-bottom:4px}
+.success-block .sub{font-size:13px;color:#888;line-height:1.6}
+
+/* ═══════════════ Non-WeChat Section ═══════════════ */
+.brand-hero{text-align:center;padding:12px 0 8px}
+.brand-hero .hero-icon{font-size:56px;display:block;margin-bottom:6px}
+.brand-hero h1{font-size:26px;font-weight:800;color:#2C2C2C;letter-spacing:1px}
+.brand-hero .sub{font-size:14px;color:#999;margin-top:2px}
+
+.feature-list{display:flex;flex-direction:column;gap:10px;margin:16px 0 20px}
+.feature-item{
+  display:flex;align-items:center;gap:12px;
+  background:#fff;border-radius:14px;padding:14px 16px;
+  border:1px solid rgba(192,57,43,.05);box-shadow:0 1px 8px rgba(0,0,0,.02)
+}
+.feature-item .fi-icon{font-size:24px;width:36px;text-align:center}
+.feature-item .fi-text{flex:1}
+.feature-item .fi-text strong{display:block;font-size:14px;color:#2C2C2C;font-weight:600}
+.feature-item .fi-text span{font-size:12px;color:#999}
+
+.qr-large{text-align:center;margin:12px 0}
+.qr-large .qr-wrap{display:inline-block}
+.qr-large img{width:180px;height:180px;border-radius:10px}
+.qr-large .hint{font-size:13px;color:#888;margin-top:8px;line-height:1.6}
+
+/* ═══════════════ Footer ═══════════════ */
+.footer{text-align:center;padding:24px 0 8px;font-size:11px;color:#ccc}
+.footer .brand{color:#bbb}
+</style>
+</head>
+<body>
+
+<div class="container" id="app">
+
+  <!-- ════════════════════════════════════════════════
+       SECTION A: 微信内 — 三步开通流程
+       ════════════════════════════════════════════════ -->
+  <div class="section active" id="sectionFlow">
+
+    <!-- Brand Header -->
+    <div class="brand-header">
+      <div class="logo-wrap"><span class="emoji">🦞</span></div>
+      <h1>享客虾</h1>
+      <div class="tagline">AI · 创作伙伴</div>
+    </div>
+
+    <!-- Steps Indicator -->
+    <div class="steps" id="stepIndicator">
+      <div class="step" id="si1">
+        <div class="dot active" id="s1d">1</div>
+        <div class="label active" id="s1l">微信授权</div>
+      </div>
+      <div class="step" id="si2">
+        <div class="dot" id="s2d">2</div>
+        <div class="label" id="s2l">验证手机</div>
+      </div>
+      <div class="step" id="si3">
+        <div class="dot" id="s3d">3</div>
+        <div class="label" id="s3l">开通使用</div>
+      </div>
+    </div>
+
+    <!-- ═══ Step 1: OAuth ═══ -->
+    <div class="card active" id="card1">
+      <div class="icon">🦞</div>
+      <h2>绑定微信</h2>
+      <div class="desc" id="oauthStatus">
+        正在获取微信授权
+        <span class="loading-dots" style="display:inline-flex;margin-left:4px">
+          <span></span><span></span><span></span>
+        </span>
+      </div>
+      <div class="profile-wrap" id="profileArea" style="display:none">
+        <div class="avatar-frame"><img id="userAvatar" src="" alt="头像"></div>
+        <div class="name" id="userNickname"></div>
+        <div class="badge"><span class="check">✓</span> 微信授权成功</div>
+      </div>
+      <div id="msg1" class="msg"></div>
+    </div>
+
+    <!-- ═══ Step 2: Phone ═══ -->
+    <div class="card" id="card2">
+      <div class="icon">📱</div>
+      <h2>验证手机号</h2>
+      <div class="desc">绑定后即可开通享客虾，所有功能全部开放</div>
+
+      <div class="form-group">
+        <label>手机号</label>
+        <input class="form-input" type="tel" id="phoneInput" placeholder="请输入手机号" maxlength="11" inputmode="numeric">
+      </div>
+      <div class="form-group">
+        <label>验证码</label>
+        <div class="input-row">
+          <input type="text" id="codeInput" placeholder="6位验证码" maxlength="6" inputmode="numeric">
+          <button class="btn-code" id="btnSendCode" onclick="sendCode()">获取验证码</button>
+        </div>
+      </div>
+
+      <div id="msg2" class="msg"></div>
+      <button class="btn-primary" id="btnVerify" onclick="verifyCode()">✅ 验证绑定</button>
+    </div>
+
+    <!-- ═══ Step 3: Membership ═══ -->
+    <div class="card" id="card3">
+      <div id="memberContent"></div>
+    </div>
+
+    <div class="footer">
+      <span class="brand">🦞 享客虾 · AI 创作伙伴</span>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SECTION B: 非微信 — 品牌展示 + QR 引导
+       ════════════════════════════════════════════════ -->
+  <div class="section" id="sectionBrand">
+    <div class="brand-hero">
+      <span class="hero-icon">🦞</span>
+      <h1>享客虾</h1>
+      <div class="sub">AI · 创作伙伴</div>
+    </div>
+
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="fi-icon">🎵</div>
+        <div class="fi-text">
+          <strong>AI 写歌</strong>
+          <span>说句话，AI 为你写一首原创歌曲</span>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon">🎬</div>
+        <div class="fi-text">
+          <strong>照片 MV</strong>
+          <span>传照片 → 识图配诗 → 配乐 → 出 MV</span>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon">💝</div>
+        <div class="fi-text">
+          <strong>AI 嗨卡</strong>
+          <span>照片 + 诗 + 歌，一张会说话的卡片</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="qr-large">
+      <p style="font-size:14px;color:#888;margin-bottom:10px">扫码添加享客虾 Bot</p>
+      <div class="qr-wrap"><img src="/api/bot/qrcode/image?t=" id="qrBrandImg"></div>
+      <div class="hint">
+        微信扫一扫 · 立即体验<br>
+        <strong>享客虾</strong> — 你的 AI 创作伙伴
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="brand">🦞 享客虾 · AI 创作伙伴</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// IMMEDIATE OAuth redirect - runs before anything else
+(function(){
+  if(location.search.indexOf('sync=')>=0||location.search.indexOf('token=')>=0||location.search.indexOf('openid=')>=0)return;
+  try{if(localStorage.getItem('wx_openid'))return;}catch(e){}
+  var cb=encodeURIComponent(location.href.split('?')[0]);
+  location.href='https://ai.pangoozn.com/api/auth-center/api/auth/wechat-redirect?direct=1&target='+cb+'&source=xkx';
+})();
+
+// 微信 UA 检测
+// ═══════════════════════════════════════════════════
+(function() {
+  var isWechat = /MicroMessenger/i.test(navigator.userAgent);
+  if (isWechat) {
+    document.getElementById('sectionFlow').classList.add('active');
+    document.getElementById('sectionBrand').classList.remove('active');
+  } else {
+    document.getElementById('sectionFlow').classList.remove('active');
+    document.getElementById('sectionBrand').classList.add('active');
+    // 刷新 QR 图（防缓存）
+    document.getElementById('qrBrandImg').src = '/api/bot/qrcode/image?' + Date.now();
+  }
+})();
+
+// ═══════════════════════════════════════════════════
+// 配置
+// ═══════════════════════════════════════════════════
+var API = '';
+var _codeTimer = null;
+var _codeCountdown = 0;
+var userInfo = null;
+var memberData = null;
+
+// ═══════════════════════════════════════════════════
+// 步骤切换
+// ═══════════════════════════════════════════════════
+function showStep(n) {
+  [1,2,3].forEach(function(i) {
+    document.getElementById('card' + i).classList.toggle('active', i === n);
+    document.getElementById('s' + i + 'd').className = i < n ? 'dot done' : i === n ? 'dot active' : 'dot';
+    document.getElementById('s' + i + 'l').className = i < n ? 'label done' : i === n ? 'label active' : 'label';
+    document.getElementById('si' + i).className = i < n ? 'step done' : 'step';
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// 初始化
+// ═══════════════════════════════════════════════════
+(function init() {
+  var params = new URLSearchParams(location.search);
+  var uriToken = params.get('token') || '';
+  var uriNick = params.get('nickname') || '';
+  var uriAvatar = params.get('avatar') || '';
+  var uriOpenid = params.get('openid') || '';
+  var action = params.get('action') || '';
+
+  // 续费场景
+  if (action === 'renew' && uriOpenid) {
+    userInfo = {openid: uriOpenid, nickname: uriNick, avatar: uriAvatar};
+    localStorage.setItem('wx_openid', uriOpenid);
+    showStep(2);
+    return;
+  }
+
+  // 有 token → 展示用户信息
+  var token = uriToken || localStorage.getItem('wx_token') || '';
+  if (token) {
+    try {
+      var payload = JSON.parse(atob(token.split('.')[1]));
+      userInfo = {
+        openid: uriOpenid || payload.openid || payload.sub || '',
+        nickname: uriNick || payload.nickname || '',
+        avatar: uriAvatar || payload.avatar || '',
+      };
+      if (userInfo.nickname) {
+        localStorage.setItem('wx_openid', userInfo.openid);
+        localStorage.setItem('wx_token', token);
+        showProfile();
+        setTimeout(function() { showStep(2); }, 1000);
+        return;
+      }
+    } catch(e) {}
+  }
+
+  // sync=ok → OAuth 回调回来，处理 openid/nickname（新用户无 token）
+  if (params.get('sync') === 'ok' && uriOpenid) {
+    userInfo = {openid: uriOpenid, nickname: uriNick || '虾友', avatar: uriAvatar || ''};
+    localStorage.setItem('wx_openid', uriOpenid);
+    if (uriNick) localStorage.setItem('wx_nickname', uriNick);
+    if (uriAvatar) localStorage.setItem('wx_avatar', uriAvatar);
+    showProfile();
+    // 清除 URL 参数
+    window.history.replaceState({}, '', location.href.split('?')[0]);
+    setTimeout(function() { showStep(2); }, 1000);
+    return;
+  }
+
+  // 已有 openid
+  var storedOpenid = '';
+  try { storedOpenid = localStorage.getItem('wx_openid') || ''; } catch(e) {}
+  if (storedOpenid) {
+    var storedNick = '';
+    try { storedNick = localStorage.getItem('wx_nickname') || ''; } catch(e) {}
+    var storedAv = '';
+    try { storedAv = localStorage.getItem('wx_avatar') || ''; } catch(e) {}
+    userInfo = {openid: storedOpenid, nickname: storedNick, avatar: storedAv};
+    if (storedNick) showProfile();
+    showStep(2);
+    return;
+  }
+
+  // OAuth 跳转
+  setTimeout(function() {
+    var cb = encodeURIComponent(location.href.split('?')[0]);
+    location.href = 'https://ai.pangoozn.com/api/auth-center/api/auth/wechat-redirect?direct=1&target=' + cb + '&source=xkx';
+  }, 800);
+})();
+
+function showProfile() {
+  document.getElementById('oauthStatus').innerHTML = '';
+  document.getElementById('profileArea').style.display = 'block';
+  document.getElementById('profileArea').style.animation = 'fadeIn .5s ease-out';
+  document.getElementById('userNickname').textContent = userInfo.nickname || '虾友';
+  if (userInfo.avatar) {
+    document.getElementById('userAvatar').src = userInfo.avatar;
+    document.getElementById('userAvatar').style.display = 'block';
+  } else {
+    document.getElementById('userAvatar').style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// Step 2: SMS
+// ═══════════════════════════════════════════════════
+function showMsg2(type, text) {
+  var el = document.getElementById('msg2');
+  el.className = 'msg ' + type;
+  el.innerHTML = text;
+  el.style.display = 'block';
+}
+
+function sendCode() {
+  var phone = document.getElementById('phoneInput').value.trim();
+  if (!/^1\d{10}$/.test(phone)) {
+    showMsg2('error', '请输入正确的11位手机号');
+    return;
+  }
+  var btn = document.getElementById('btnSendCode');
+  btn.disabled = true;
+  btn.textContent = '发送中...';
+
+  fetch(API + '/api/bot/send-code', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({phone: phone}),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) {
+      showMsg2('success', '📱 验证码已发送到 ' + phone.slice(0,3) + '****' + phone.slice(-4));
+      startCountdown();
+      if (d.mock_code) {
+        showMsg2('info', '🧪 测试验证码: ' + d.mock_code);
+        document.getElementById('codeInput').value = d.mock_code;
+      }
+    } else {
+      showMsg2('error', d.msg || '发送失败');
+      btn.disabled = false;
+      btn.textContent = '重新获取';
+    }
+  })
+  .catch(function() {
+    showMsg2('error', '网络错误，请重试');
+    btn.disabled = false;
+    btn.textContent = '获取验证码';
+  });
+}
+
+function startCountdown() {
+  _codeCountdown = 60;
+  var btn = document.getElementById('btnSendCode');
+  if (_codeTimer) clearInterval(_codeTimer);
+  _codeTimer = setInterval(function() {
+    _codeCountdown--;
+    if (_codeCountdown <= 0) {
+      clearInterval(_codeTimer);
+      btn.disabled = false;
+      btn.textContent = '重新获取';
+    } else {
+      btn.textContent = _codeCountdown + 's';
+    }
+  }, 1000);
+}
+
+function verifyCode() {
+  var phone = document.getElementById('phoneInput').value.trim();
+  var code = document.getElementById('codeInput').value.trim();
+  if (!code || code.length < 4) { showMsg2('error', '请输入验证码'); return; }
+  if (!/^1\d{10}$/.test(phone)) { showMsg2('error', '请输入正确手机号'); return; }
+
+  var btn = document.getElementById('btnVerify');
+  btn.disabled = true;
+  btn.textContent = '⏳ 验证中...';
+
+  var oid = userInfo ? (userInfo.openid || '') : '';
+  var nick = userInfo ? (userInfo.nickname || '') : '';
+
+  fetch(API + '/api/bot/verify-code', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({phone: phone, code: code, openid: oid, nickname: nick || '虾友'}),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) {
+      showMsg2('success', '✅ 手机绑定成功！');
+      if (d.openid) {
+        localStorage.setItem('wx_openid', d.openid);
+        if (!userInfo) userInfo = {};
+        userInfo.openid = d.openid;
+      }
+      setTimeout(checkMember, 600);
+    } else {
+      showMsg2('error', d.msg || '验证失败');
+      btn.disabled = false;
+      btn.textContent = '✅ 验证绑定';
+    }
+  })
+  .catch(function() {
+    showMsg2('error', '网络错误');
+    btn.disabled = false;
+    btn.textContent = '✅ 验证绑定';
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// Step 3: 会员检查
+// ═══════════════════════════════════════════════════
+function checkMember() {
+  showStep(3);
+  document.getElementById('memberContent').innerHTML =
+    '<div style="text-align:center;padding:30px 0">' +
+    '<div style="display:inline-block;width:22px;height:22px;border:2.5px solid #eee;border-top-color:#C0392B;border-radius:50%;animation:spin .6s linear infinite"></div>' +
+    '<div style="margin-top:12px;color:#888;font-size:13px">查询会员信息...</div></div>';
+
+  var oid = userInfo ? userInfo.openid : '';
+  if (!oid) { showMemberNew(); return; }
+
+  fetch(API + '/api/bot/member-status?openid=' + encodeURIComponent(oid))
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    memberData = d;
+    if (d.status === 'active') showMemberActive(d);
+    else if (d.status === 'expiring') showMemberRenew(d);
+    else if (d.status === 'expired') showMemberRenew(d);
+    else showMemberNew();
+  })
+  .catch(function() { showMemberNew(); });
+}
+
+// ── 已激活 ──
+function showMemberActive(d) {
+  var oid = userInfo ? userInfo.openid : '';
+  var html =
+    '<div class="alert alert-active">' +
+    '<span class="big-icon">🎉</span>' +
+    '<div class="big">享客虾已激活</div>' +
+    '<div class="sub">有效期至 ' + (d.expires_at || '') + '</div></div>';
+
+  fetch(API + '/api/bot/check-bound?openid=' + encodeURIComponent(oid))
+  .then(function(r) { return r.json(); })
+  .then(function(b) {
+    if (b && b.bound) {
+      html += '<div class="success-block">' +
+        '<span class="big-icon" style="font-size:48px">✅</span>' +
+        '<h3>一切就绪</h3>' +
+        '<p class="sub">享客虾 Bot 已在你的微信列表中<br>直接打开聊天即可使用</p>' +
+        '</div>' +
+        '<button class="btn-primary" onclick="location.href=\\'https://weixin.qq.com\\'">💬 开始聊天</button>';
+    } else {
+      html += '<p class="desc" style="margin-bottom:10px">扫下方二维码添加享客虾 Bot</p>' +
+        '<div class="qr-section"><div class="qr-wrap"><img src="/api/bot/qrcode/image?' + Date.now() + '"></div></div>' +
+        '<p class="qr-hint">截屏保存 → 微信扫一扫从相册选择<br>或回复「绑定手机」在 Bot 中激活</p>';
+    }
+    document.getElementById('memberContent').innerHTML = html;
+  })
+  .catch(function() {
+    document.getElementById('memberContent').innerHTML = html;
+  });
+}
+
+// ── 续费 ──
+function showMemberRenew(d) {
+  var html = '<div class="alert ' + (d.status === 'expired' ? 'alert-expired' : 'alert-active') + '">';
+  if (d.status === 'expired') {
+    html += '<span class="big-icon">⚠️</span><div class="big">会员已过期</div><div class="sub">续费后恢复全部功能</div>';
+  } else {
+    html += '<span class="big-icon">🦞</span><div class="big">会员即将到期</div><div class="sub">还有 ' + d.days_left + ' 天 · 续费保持使用</div>';
+  }
+  html += '</div>';
+
+  html += '<div class="price-grid">' +
+    '<div class="price-card selected" onclick="selectPlan(4,this)">' +
+      '<div class="label-top">月付</div>' +
+      '<div class="price"><span class="symbol">¥</span><span class="num">9.9</span></div>' +
+      '<div class="per">/月</div>' +
+    '</div>' +
+    '<div class="price-card" onclick="selectPlan(12,this)">' +
+      '<div class="badge-hot">特惠</div>' +
+      '<div class="label-top">年卡</div>' +
+      '<div class="price"><span class="symbol">¥</span><span class="num">99</span></div>' +
+      '<div class="per">/年</div>' +
+      '<div class="save">省 ¥19.8</div>' +
+    '</div>' +
+  '</div>' +
+  '<button class="btn-primary" id="payBtn" onclick="doPay()">🔄 续费 ¥9.9/月</button>' +
+  '<div id="payStatus" class="msg"></div>';
+
+  document.getElementById('memberContent').innerHTML = html;
+  window._selectedPlan = 4;
+}
+
+function selectPlan(planId, el) {
+  document.querySelectorAll('#memberContent .price-card').forEach(function(c) {
+    c.classList.remove('selected');
+  });
+  el.classList.add('selected');
+  window._selectedPlan = planId;
+  document.getElementById('payBtn').textContent = planId === 4 ? '🔄 续费 ¥9.9/月' : '🔥 续费 ¥99/年';
+}
+
+// ── 新用户开通 ──
+function showMemberNew() {
+  document.getElementById('memberContent').innerHTML =
+    '<p class="desc" style="margin-bottom:16px">选择开通方案</p>' +
+    '<div class="price-grid">' +
+      '<div class="price-card selected" onclick="selectPlan(4,this)">' +
+        '<div class="label-top">月付</div>' +
+        '<div class="price"><span class="symbol">¥</span><span class="num">9.9</span></div>' +
+        '<div class="per">/月</div>' +
+      '</div>' +
+      '<div class="price-card" onclick="selectPlan(12,this)">' +
+        '<div class="badge-hot">特惠</div>' +
+        '<div class="label-top">年卡</div>' +
+        '<div class="price"><span class="symbol">¥</span><span class="num">99</span></div>' +
+        '<div class="per">/年</div>' +
+        '<div class="save">省 ¥19.8</div>' +
+      '</div>' +
+    '</div>' +
+    '<button class="btn-primary" id="payBtn" onclick="doPay()">🚀 开通享客虾 ¥9.9/月</button>' +
+    '<div id="payStatus" class="msg"></div>';
+  window._selectedPlan = 4;
+}
+
+// ═══════════════════════════════════════════════════
+// 支付 + QR
+// ═══════════════════════════════════════════════════
+function doPay() {
+  var planId = window._selectedPlan || 4;
+  var btn = document.getElementById('payBtn');
+  var ps = document.getElementById('payStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ 创建订单...';
+  ps.style.display = 'none';
+  ps.className = 'msg';
+
+  var oid = userInfo ? userInfo.openid : '';
+  var nick = userInfo ? (userInfo.nickname || '虾友') : '虾友';
+
+  fetch(API + '/api/pay/create', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({plan_id: planId, openid: oid, nickname: nick}),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (!d.ok) {
+      ps.innerHTML = '❌ ' + (d.error || '开通失败');
+      ps.className = 'msg error';
+      btn.disabled = false;
+      btn.textContent = '🔄 重试';
+      return;
+    }
+    if (d.test_mode) {
+      ps.innerHTML = '✅ 开通成功！🎉';
+      ps.className = 'msg success';
+      onPaySuccess(d);
+    } else if (d.jsapi) {
+      callWxPay(d.jsapi, d);
+    }
+  })
+  .catch(function() {
+    ps.innerHTML = '❌ 网络错误';
+    ps.className = 'msg error';
+    btn.disabled = false;
+    btn.textContent = '🔄 重试';
+  });
+}
+
+function callWxPay(jsapi, d) {
+  if (typeof wx !== 'undefined' && wx.chooseWXPay) {
+    wx.chooseWXPay({
+      appId: jsapi.appId, timestamp: jsapi.timeStamp,
+      nonceStr: jsapi.nonceStr, package: jsapi.package,
+      signType: jsapi.signType || 'RSA', paySign: jsapi.paySign,
+      success: function() { onPaySuccess(d); },
+      cancel: function() {
+        document.getElementById('payBtn').disabled = false;
+        document.getElementById('payBtn').textContent = '🔄 重新支付';
+        document.getElementById('payStatus').textContent = '❌ 支付已取消';
+        document.getElementById('payStatus').className = 'msg error';
+      },
+      fail: function(e) {
+        document.getElementById('payBtn').disabled = false;
+        document.getElementById('payBtn').textContent = '🔄 重新支付';
+        document.getElementById('payStatus').textContent = '❌ 支付失败';
+        document.getElementById('payStatus').className = 'msg error';
+      },
+    });
+  } else {
+    onPaySuccess(d);
+  }
+}
+
+function onPaySuccess(d) {
+  var oid = userInfo ? userInfo.openid : '';
+  fetch(API + '/api/bot/check-bound?openid=' + encodeURIComponent(oid))
+  .then(function(r) { return r.json(); })
+  .then(function(b) {
+    if (b && b.bound) {
+      document.getElementById('memberContent').innerHTML =
+        '<div class="success-block">' +
+        '<span class="big-icon">🎉</span>' +
+        '<h3>已激活</h3>' +
+        '<p class="sub">你的享客虾 Bot 已就绪<br>直接打开微信聊天即可</p></div>' +
+        '<button class="btn-primary" onclick="location.href=\\'https://weixin.qq.com\\'">💬 开始聊天</button>';
+      return;
+    }
+    document.getElementById('memberContent').innerHTML =
+      '<div class="success-block">' +
+      '<span class="big-icon">🎉</span>' +
+      '<h3>开通成功！</h3>' +
+      '<p class="sub">扫下方二维码添加享客虾 Bot</p></div>' +
+      '<div class="qr-section"><div class="qr-wrap"><img src="/api/bot/qrcode/image?' + Date.now() + '"></div></div>' +
+      '<p class="qr-hint">截屏保存 → 微信扫一扫从相册选择<br>或回复「绑定手机」在 Bot 中激活</p>';
+  })
+  .catch(function() {
+    document.getElementById('memberContent').innerHTML =
+      '<div class="success-block">' +
+      '<span class="big-icon">🎉</span>' +
+      '<h3>开通成功！</h3>' +
+      '<p class="sub">扫下方二维码添加享客虾 Bot</p></div>' +
+      '<div class="qr-section"><div class="qr-wrap"><img src="/api/bot/qrcode/image?' + Date.now() + '"></div></div>' +
+      '<p class="qr-hint">截屏保存 → 微信扫一扫从相册选择</p>';
+  });
+}
+</script>
+</body>
+</html>

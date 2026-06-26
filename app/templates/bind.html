@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<base href="/xkx/">
+<title>添加享客虾 · Bot 绑定</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:system-ui,'PingFang SC','Microsoft YaHei',sans-serif;
+  background:linear-gradient(180deg,#F8F6F2 0%,#FFF 40%,#FFF 100%);
+  color:#2C2C2C;min-height:100vh;line-height:1.6;
+  -webkit-font-smoothing:antialiased
+}
+.container{max-width:420px;margin:0 auto;padding:24px 20px 40px;text-align:center}
+
+/* Back link */
+.back{text-align:left;font-size:13px;color:#aaa;margin-bottom:8px;cursor:pointer;display:inline-block}
+.back:hover{color:#C0392B}
+
+/* Header */
+.header{margin-bottom:24px}
+.header .icon{font-size:48px}
+.header h2{font-size:20px;font-weight:700;color:#1a1a1a;margin-top:6px}
+
+/* Profile card */
+.profile-card{
+  background:#fff;border-radius:16px;padding:20px;margin-bottom:20px;
+  border:1px solid rgba(192,57,43,.06);box-shadow:0 2px 12px rgba(0,0,0,.04);
+  display:none
+}
+.profile-card.show{display:block;animation:fadeUp .4s ease-out}
+.profile-card .avatar{width:56px;height:56px;border-radius:50%;border:2px solid #C0392B;padding:2px;margin:0 auto 8px}
+.profile-card .avatar img{width:100%;height:100%;border-radius:50%;display:block}
+.profile-card .name{font-size:18px;font-weight:700;color:#1a1a1a}
+.profile-card .badge{font-size:12px;color:#27AE60;margin-top:4px}
+.profile-card .badge .check{display:inline-block;width:16px;height:16px;background:#27AE60;border-radius:50%;color:#fff;font-size:10px;line-height:16px;text-align:center;margin-right:3px}
+
+/* QR section */
+.qr-box{
+  background:#fff;border-radius:16px;padding:24px 20px 20px;margin-bottom:16px;
+  border:1px solid rgba(192,57,43,.06);box-shadow:0 2px 12px rgba(0,0,0,.04)
+}
+.qr-box .qr-wrap{
+  width:200px;height:200px;margin:8px auto 12px;position:relative;
+  background:rgba(192,57,43,.02);border-radius:12px;overflow:hidden
+}
+.qr-box .qr-wrap img{width:100%;height:100%;object-fit:contain;display:block}
+.qr-box .qr-loading{font-size:13px;color:#bbb;padding:80px 0}
+.qr-box .step-list{text-align:left;margin-top:12px}
+.qr-box .step-list li{font-size:13px;color:#888;padding:5px 0;list-style:none;line-height:1.7}
+.qr-box .step-list li:before{content:'① ';color:#C0392B;margin-right:3px}
+.qr-box .step-list li:nth-child(2):before{content:'② '}
+.qr-box .step-list li:nth-child(3):before{content:'③ '}
+.qr-box .step-list li:nth-child(4):before{content:'④ '}
+
+/* Status messages */
+.msg{padding:12px 16px;border-radius:10px;margin-bottom:16px;display:none;font-size:13px;line-height:1.5}
+.msg.success{display:block;background:rgba(39,174,96,.07);color:#27AE60;border:1px solid rgba(39,174,96,.12)}
+.msg.error{display:block;background:rgba(192,57,43,.05);color:#C0392B;border:1px solid rgba(192,57,43,.08)}
+
+/* CTA */
+.btn-primary{
+  display:block;width:100%;padding:15px;border-radius:14px;border:none;
+  background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;
+  font-size:16px;font-weight:700;cursor:pointer;transition:all .2s;
+  box-shadow:0 4px 12px rgba(192,57,43,.25)
+}
+.btn-primary:active{transform:scale(.97)}
+.btn-secondary{
+  width:100%;padding:12px;border-radius:14px;border:1.5px solid #e8e0d8;
+  background:#fff;color:#888;font-size:14px;cursor:pointer;margin-top:8px
+}
+.btn-secondary:active{background:#f8f6f2}
+
+/* Refresh button */
+.refresh-btn{
+  display:inline-block;padding:10px 20px;border-radius:10px;border:1.5px solid #C0392B;
+  background:#fff;color:#C0392B;font-size:14px;font-weight:600;cursor:pointer;margin:4px auto
+}
+.refresh-btn:active{background:#fef0ee}
+
+/* Footer */
+.footer{font-size:11px;color:#ccc;margin-top:24px}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div style="text-align:left"><span class="back" onclick="history.back()">← 返回</span></div>
+
+  <div class="header">
+    <div class="icon">🦞</div>
+    <h2 id="pageTitle">添加享客虾 Bot</h2>
+  </div>
+
+  <!-- Profile card (shown after OAuth) -->
+  <div class="profile-card" id="profileCard">
+    <div class="avatar"><img id="userAvatar" src="" alt="头像"></div>
+    <div class="name" id="userNickname"></div>
+    <div class="badge"><span class="check">✓</span> 微信授权成功</div>
+  </div>
+
+  <!-- Status messages -->
+  <div class="msg" id="statusMsg"></div>
+
+  <!-- QR Section -->
+  <div class="qr-box" id="qrBox">
+    <p style="font-size:14px;color:#888" id="qrTitle">扫二维码添加享客虾为好友</p>
+    <p style="font-size:11px;color:#bbb;margin-top:-6px;margin-bottom:4px" id="qrHint">二维码约 1 分钟有效，过期自动刷新</p>
+    <div class="qr-wrap" id="qrWrap">
+      <div class="qr-loading" id="qrLoading">正在生成二维码...</div>
+      <img id="qrImg" src="" alt="二维码" style="display:none">
+    </div>
+    <ul class="step-list">
+      <li>打开微信「扫一扫」</li>
+      <li>扫描上方二维码</li>
+      <li>在微信中确认</li>
+      <li>Bot 将发送欢迎消息</li>
+    </ul>
+  </div>
+
+  <div style="text-align:center;margin:8px auto 6px">
+  <button class="refresh-btn" onclick="saveQr()" style="display:inline-block;background:#C0392B;color:#fff;border-color:#C0392B">💾 保存到相册</button>
+</div>
+  <button class="refresh-btn" id="refreshBtn" onclick="refreshQr()" style="display:inline-block">🔄 刷新二维码</button>
+
+  <button class="btn-primary" id="btnContinue" onclick="location.href='/subscribe'" style="display:none">✅ 已绑定，去开通</button>
+
+  <div class="footer">
+    <span>🦞 享客虾 · AI 创作伙伴</span>
+  </div>
+</div>
+
+<script>
+var sessionId = '';
+var pollTimer = null;
+var userInfo = {openid: '', nickname: '', avatar: ''};
+
+(function init() {
+  var params = new URLSearchParams(location.search);
+  var pOpenid = params.get('openid') || '';
+  var pNick = params.get('nickname') || '';
+  var pAvatar = params.get('avatar') || '';
+  var pSync = params.get('sync') || '';
+
+  // 已有 openid（从 localStorage 或回调）
+  if (pSync === 'ok' && pOpenid) {
+    userInfo = {openid: pOpenid, nickname: pNick || '虾友', avatar: pAvatar || ''};
+    try {
+      localStorage.setItem('wx_openid', pOpenid);
+      if (pNick) localStorage.setItem('wx_nickname', pNick);
+      if (pAvatar) localStorage.setItem('wx_avatar', pAvatar);
+    } catch(e) {}
+    showProfile();
+    window.history.replaceState({}, '', location.href.split('?')[0]);
+    loadQr();
+    return;
+  }
+
+  try {
+    var storedOpenid = localStorage.getItem('wx_openid') || '';
+    if (storedOpenid) {
+      userInfo.openid = storedOpenid;
+      var storedNick = localStorage.getItem('wx_nickname') || '';
+      var storedAv = localStorage.getItem('wx_avatar') || '';
+      if (storedNick) {
+        userInfo.nickname = storedNick;
+        userInfo.avatar = storedAv;
+        showProfile();
+      }
+    }
+  } catch(e) {}
+
+  // 在微信内但没有 openid → 自动 OAuth
+  if (!userInfo.openid && /MicroMessenger/i.test(navigator.userAgent)) {
+    var cb = encodeURIComponent(window.location.origin + '/xkx/bind');
+    window.location.href = 'https://ai.pangoozn.com/api/auth-center/api/auth/wechat-redirect?direct=1&target=' + cb + '&source=xkx';
+    return;
+  }
+
+  loadQr();
+})();
+
+function showProfile() {
+  document.getElementById('profileCard').classList.add('show');
+  document.getElementById('userNickname').textContent = userInfo.nickname || '虾友';
+  if (userInfo.avatar) {
+    document.getElementById('userAvatar').src = userInfo.avatar;
+  } else {
+    document.getElementById('userAvatar').style.display = 'none';
+  }
+}
+
+function loadQr() {
+  var img = document.getElementById('qrImg');
+  var loading = document.getElementById('qrLoading');
+  var refresh = document.getElementById('refreshBtn');
+  refresh.style.display = 'none';
+
+  fetch('/api/bot/qrcode/session')
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (!d.success) {
+      loading.textContent = '获取二维码失败，请刷新重试';
+      return;
+    }
+    sessionId = d.session_id || '';
+    // 用 QR code URL 生成图片
+    return fetch('/api/bot/qrcode/image?value=' + encodeURIComponent(d.qrcode_value));
+  })
+  .then(function(r) { return r.blob(); })
+  .then(function(blob) {
+    img.src = URL.createObjectURL(blob);
+    img.style.display = 'block';
+    loading.style.display = 'none';
+    if (userInfo.openid) startPoll();
+  })
+  .catch(function(e) {
+    loading.textContent = '网络错误，请刷新重试';
+    refresh.style.display = 'block';
+  });
+}
+
+function startPoll() {
+  if (!sessionId) { return; }
+  pollTimer = setInterval(function() {
+    fetch('/api/bot/qrcode/session-poll?session_id=' + sessionId)
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d.success) {
+        stopPoll();
+        // session 失效，重新创建
+        loadQr();
+        return;
+      }
+      if (d.scanned) {
+        stopPoll();
+        activateBot(d);
+      } else if (d.refreshed) {
+        document.getElementById('refreshBtn').style.display = 'inline-block';
+        if (d.qrcode_value) {
+          fetch('/api/bot/qrcode/image?value=' + encodeURIComponent(d.qrcode_value))
+          .then(function(r) { return r.blob(); })
+          .then(function(blob) {
+            document.getElementById('qrImg').src = URL.createObjectURL(blob);
+          });
+        }
+      }
+    })
+    .catch(function() {});
+  }, 3000);
+}
+
+function stopPoll() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function activateBot(data) {
+  showMsg('', '🎯 检测到扫码，正在激活...');
+  fetch('/api/bot/activate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      bot_id: data.bot_id,
+      bot_token: data.bot_token,
+      nickname: userInfo.nickname || '',
+      openid: userInfo.openid || data.user_id || ''
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      showMsg('success', '✅ Bot 已激活！✅');
+      // 显示继续按钮
+      document.getElementById('btnContinue').style.display = 'block';
+      document.getElementById('qrTitle').textContent = '🎉 绑定成功！';
+      document.getElementById('qrBox').style.borderColor = 'rgba(39,174,96,.2)';
+    } else {
+      showMsg('error', '❌ 激活失败：' + (d.error || ''));
+    }
+  })
+  .catch(function(e) {
+    showMsg('error', '❌ 激活失败：' + e.message);
+  });
+}
+
+function refreshQr() {
+  stopPoll();
+  document.getElementById('qrImg').style.display = 'none';
+  document.getElementById('qrLoading').style.display = 'block';
+  document.getElementById('qrLoading').textContent = '正在刷新...';
+  document.getElementById('refreshBtn').style.display = 'inline-block';
+  loadQr();
+}
+
+function showMsg(type, text) {
+  var el = document.getElementById('statusMsg');
+  el.className = 'msg ' + type;
+  el.textContent = text;
+  el.style.display = text ? 'block' : 'none';
+}
+</script>
+</body>
+</html>

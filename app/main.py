@@ -84,8 +84,40 @@ app.mount('/agents', StaticFiles(directory='/home/ubuntu/weclaw-1/agents'), name
 
 @app.get('/', response_class=HTMLResponse)
 async def landing():
-    with open('app/templates/landing.html', 'r', encoding='utf-8') as f:
-        return f.read()
+    html = open('app/templates/landing.html', 'r', encoding='utf-8').read()
+    resp = HTMLResponse(content=html)
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
+
+@app.get('/bind', response_class=HTMLResponse)
+async def bind_page(sync: str = '', token: str = '', openid: str = '', nickname: str = '', avatar: str = ''):
+    html = open('app/templates/bind.html', 'r', encoding='utf-8').read()
+    if openid and nickname:
+        nick_safe = nickname.replace("'", "\\'").replace('<', '&lt;')
+        av_safe = avatar.replace("'", "\\'") if avatar else ''
+        inject = f'''<script>
+(function(){{
+  var oid = '{openid}';
+  var nick = '{nick_safe}';
+  var av = '{av_safe}';
+  if(oid && nick){{
+    try{{
+      localStorage.setItem('wx_openid', oid);
+      localStorage.setItem('wx_nickname', nick);
+      if(av) localStorage.setItem('wx_avatar', av);
+    }}catch(e){{}}
+  }}
+}})();
+</script>'''
+        html = html.replace('</head>', inject + '</head>')
+    resp = HTMLResponse(content=html)
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 
 @app.get('/admin', response_class=HTMLResponse)

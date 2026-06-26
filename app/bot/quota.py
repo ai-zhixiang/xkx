@@ -182,7 +182,7 @@ def check_and_consume(user_id: str) -> dict:
 "
             "我是你的 AI 创作伙伴，先绑定手机号激活完整体验：
 "
-            "https://hai.pangoozn.com/static/xiake_landing.html
+            "https://ai.pangoozn.com/xkx/
 
 "
             "绑定后你可以：
@@ -216,7 +216,7 @@ def get_upgrade_message() -> str:
         "👉 开通会员继续畅聊：\n"
         "   • 基础版 ¥9.9/月 — 500条/月\n"
         "   • 标准版 ¥19.9/月 — 2000条/月\n\n"
-        "开通方式：打开 https://hai.pangoozn.com/xkx/ 选择套餐\n\n"
+        "开通方式：打开 https://ai.pangoozn.com/xkx/ 选择套餐\n\n"
         "感谢体验！🙏"
     )
 
@@ -232,5 +232,5 @@ def get_welcome_message(remaining: int) -> str:
         f"📊 今日免费剩余：**{remaining} 条**\n"
         "   · 免费用户 50 条/天\n"
         "   · 会员不限量\n\n"
-        "开通会员 → https://hai.pangoozn.com/xkx/"
+        "开通会员 → https://ai.pangoozn.com/xkx/"
     )

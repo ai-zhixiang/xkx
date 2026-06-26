@@ -127,7 +127,8 @@ async function fetchNewQR() {
     const data = await resp.json();
     if (data.success) {
       currentQR = data.qrcode_value;
-      document.getElementById('qrImage').src = `${API_BASE}/qrcode/image?value=${currentQR}&_t=${Date.now()}`;
+      var liteappUrl = data.qrcode_url || "";
+      document.getElementById('qrImage').src = `${API_BASE}/qrcode/image?data=${encodeURIComponent(liteappUrl)}&_t=${Date.now()}`;
       qrRefreshCount++;
       setStatus('waiting', `<span class="spinner"></span> 等待扫码...`);
     }

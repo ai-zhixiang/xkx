@@ -2,1001 +2,171 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <base href="/xkx/">
-<title>享客虾 · 私人AI秘书</title>
-
-<!-- OG / 微信分享标签 -->
-<meta property="og:title" content="享客虾 · 私人AI秘书">
-<meta property="og:description" content="享客虾，虾客行 — 你的微信私人AI秘书。写查译总全搞定，24h在线，私人专属。">
-<meta property="og:image" content="https://hai.pangoozn.com/xkx/static/logo-xkx.png">
-<meta property="og:url" content="https://hai.pangoozn.com/xkx/">
-<meta property="og:type" content="website">
-<script>window.WX_SHARE={title:'享客虾 · 私人AI秘书',desc:'享客虾，虾客行 — 你的微信私人AI秘书',imgUrl:'https://hai.pangoozn.com/xkx/static/logo-xkx.png',link:location.href};</script>
-<script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
-
+<title>🦞 享客虾 · AI 创作伙伴</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,'PingFang SC','Microsoft YaHei',sans-serif;background:#F8F6F2;color:#2C2C2C;line-height:1.6;min-height:100vh}
+body{
+  font-family:system-ui,'PingFang SC','Microsoft YaHei',sans-serif;
+  background:linear-gradient(180deg,#F8F6F2 0%,#FFF 40%,#FFF 100%);
+  color:#2C2C2C;min-height:100vh;line-height:1.6;
+  -webkit-font-smoothing:antialiased
+}
+.container{max-width:420px;margin:0 auto;padding:20px 20px 40px}
 
-/* ---- 公测徽章 ---- */
-.beta-ribbon{position:fixed;top:0;left:0;right:0;z-index:199;background:linear-gradient(135deg,#E67E22,#F39C12);color:#fff;text-align:center;padding:5px 0;font-size:11px;font-weight:600;letter-spacing:2px}
-.beta-ribbon .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;margin:0 4px;animation:blink 1.2s ease-in-out infinite}
-.beta-ribbon .dot:nth-child(2){animation-delay:.4s}
-.beta-ribbon .dot:nth-child(3){animation-delay:.8s}
-@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+/* Hero */
+.hero{text-align:center;padding:32px 0 8px}
+.hero .logo-wrap{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:80px;height:80px;border-radius:50%;
+  background:linear-gradient(135deg,#C0392B,#A93226);
+  box-shadow:0 4px 20px rgba(192,57,43,.25);margin-bottom:8px
+}
+.hero .logo-wrap .emoji{font-size:42px;line-height:1}
+.hero h1{font-size:28px;font-weight:800;color:#1a1a1a;margin-top:8px;letter-spacing:1px}
+.hero .tagline{
+  font-size:14px;color:#C0392B;margin-top:4px;font-weight:500;
+  background:rgba(192,57,43,.06);display:inline-block;padding:3px 16px;border-radius:20px
+}
 
-body{padding-top:28px} /* 给公测条让位 */
-
-/* ---- Hero ---- */
-.hero{background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;padding:20px 20px 18px;text-align:center}
-.hero .emoji{font-size:28px;margin-bottom:0}
-.hero h1{font-size:18px;font-weight:700}
-.hero .slogan{font-size:12px;opacity:.75;margin-top:1px}
-
-/* ---- 区块标题 ---- */
-.section-title{text-align:center;padding:24px 16px 12px;font-size:16px;font-weight:700;color:#C0392B;display:flex;align-items:center;justify-content:center;gap:6px}
-.section-title::after{content:'';flex:0 0 auto;width:24px;height:1px;background:rgba(192,57,43,.2);margin-left:4px}
-
-/* ---- 聊天演示 ---- */
-.chat-demo{background:#EDEDED;border-radius:16px;padding:16px 12px;margin:0 16px;max-width:500px;margin-left:auto;margin-right:auto}
-.chat-demo .msg{display:flex;flex-direction:column;margin-bottom:14px}
-.chat-demo .msg.user{align-items:flex-end}
-.chat-demo .msg.ai{align-items:flex-start}
-.chat-demo .bubble{max-width:80%;padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.6;position:relative;animation:msgIn .4s ease-out}
-.chat-demo .user .bubble{background:#95EC69;color:#000;border-bottom-right-radius:4px}
-.chat-demo .ai .bubble{background:#fff;color:#333;border-bottom-left-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
-.chat-demo .msg .time{font-size:12px;color:#999;margin:4px 8px 0}
-.chat-demo .typing{display:flex;gap:4px;padding:12px 16px;background:#fff;border-radius:16px 16px 16px 4px;width:fit-content;box-shadow:0 1px 2px rgba(0,0,0,.05)}
-.chat-demo .typing span{width:7px;height:7px;background:#bbb;border-radius:50%;animation:typing 1.4s infinite}
-.chat-demo .typing span:nth-child(2){animation-delay:.2s}
-.chat-demo .typing span:nth-child(3){animation-delay:.4s}
-@keyframes typing{0%,60%,100%{opacity:.3;transform:scale(.8)}30%{opacity:1;transform:scale(1)}}
-@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.chat-demo .msg:nth-child(2) .bubble{animation-delay:.5s}
-.chat-demo .msg:nth-child(3) .bubble{animation-delay:1s}
-.chat-demo .msg:nth-child(4) .bubble{animation-delay:1.5s}
-.chat-demo .msg:nth-child(5) .bubble{animation-delay:2s}
-
-/* ---- 功能亮点 ---- */
-.features{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px;max-width:500px;margin:0 auto}
-.feat-card{background:#fff;border-radius:14px;padding:18px 14px;text-align:center;border:1px solid rgba(192,57,43,.06);transition:transform .15s}
-.feat-card:active{transform:scale(.97)}
-.feat-card .icon{font-size:28px;margin-bottom:4px}
-.feat-card h3{font-size:13px;font-weight:600;margin-bottom:2px}
-.feat-card p{font-size:12px;color:#888;line-height:1.5}
-
-/* ---- 三步开始 ---- */
-.steps{padding:0 16px;max-width:500px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
-.step-row{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:16px 14px;border:1px solid rgba(192,57,43,.06)}
-.step-num{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0}
-.step-info{flex:1;min-width:0}
-.step-info h3{font-size:13px;font-weight:600}
-.step-info p{font-size:11px;color:#888;margin-top:1px}
-.step-arrow{color:#ccc;font-size:18px;flex-shrink:0}
-
-/* ---- 用户状态条 ---- */
-.user-bar{display:none;background:#fff;padding:12px 16px;margin:12px 16px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);align-items:center;gap:10px}
-.user-bar.show{display:flex}
-.user-bar .avatar{width:40px;height:40px;border-radius:50%;background:#eee;overflow:hidden;flex-shrink:0}
-.user-bar .avatar img{width:100%;height:100%;object-fit:cover}
-.user-bar .info{flex:1;min-width:0}
-.user-bar .info .nick{font-size:14px;font-weight:600;color:#2C2C2C}
-.user-bar .info .sub{font-size:11px;color:#888}
-.user-bar .info .sub.active{color:#27AE60;font-weight:600}
-.sync-btn{width:36px;height:36px;border-radius:50%;border:1px solid #ddd;background:#f5f5f5;font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s}
-.sync-btn:hover{background:#C0392B;color:#fff;border-color:#C0392B}
-.sync-btn.spinning{animation:spin .8s linear infinite;pointer-events:none}
-
-/* 状态面板 */
-.status-panel{display:none;padding:0 16px 12px;max-width:500px;margin:0 auto}
-.status-panel.show{display:block}
-.status-card{background:#fff;border-radius:14px;padding:20px;border:2px solid #27AE60;box-shadow:0 4px 16px rgba(39,174,96,.06)}
-.status-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
-.stat-item{background:#f8f8f8;border-radius:10px;padding:10px 8px;text-align:center}
-.stat-item .val{font-size:18px;font-weight:700;color:#C0392B}
-.stat-item .lbl{font-size:11px;color:#888;margin-top:2px}
-.stat-item.warn .val{color:#F39C12}
-.stat-item.danger .val{color:#C0392B}
-.status-actions{margin-top:12px;display:flex;gap:8px}
-.btn-renew{flex:1;padding:10px;border-radius:20px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:linear-gradient(135deg,#C0392B,#A93226);color:#fff}
-.btn-upgrade{flex:1;padding:10px;border-radius:20px;font-size:13px;font-weight:600;border:2px solid #C0392B;background:#fff;color:#C0392B;cursor:pointer}
-
-/* ---- 套餐 ---- */
-.plans-section{padding:0 16px 16px;max-width:500px;margin:0 auto}
-.plans-section .section-title{padding-top:12px}
-.promo-banner{background:linear-gradient(135deg,#C0392B,#E74C3C);color:#fff;text-align:center;padding:12px 16px;border-radius:12px;font-size:14px;font-weight:600;margin-bottom:14px;letter-spacing:1px;animation:pulse-promo 2s ease-in-out infinite;box-shadow:0 4px 16px rgba(192,57,43,.25)}
-.promo-banner strong{font-size:18px;background:#FFD700;color:#C0392B;padding:2px 8px;border-radius:4px;margin:0 4px}
-@keyframes pulse-promo{0%,100%{box-shadow:0 4px 16px rgba(192,57,43,.25)}50%{box-shadow:0 4px 24px rgba(192,57,43,.45)}}
-.tier-tabs{display:flex;gap:0;margin-bottom:12px;background:#eee;border-radius:12px;padding:3px}
-.tier-tab{flex:1;text-align:center;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:#888;transition:all .2s}
-.tier-tab.active{background:#fff;color:#C0392B;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.pkg-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-.pkg-card{border:2px solid #eee;border-radius:12px;padding:16px 8px;text-align:center;cursor:pointer;transition:all .2s;background:#fff;position:relative}
-.pkg-card.selected{border-color:#C0392B;background:rgba(192,57,43,.03);box-shadow:0 0 0 2px rgba(192,57,43,.12)}
-.pkg-card .tag{position:absolute;top:-7px;right:6px;background:linear-gradient(135deg,#F39C12,#E67E22);color:#fff;font-size:10px;padding:1px 7px;border-radius:7px;font-weight:600}
-.pkg-card .discount-tag{position:absolute;top:-7px;left:6px;background:#C0392B;color:#fff;font-size:10px;padding:1px 6px;border-radius:7px;font-weight:700}
-.pkg-card .name{font-size:13px;font-weight:700;margin-bottom:2px}
-.pkg-card .price{font-size:20px;font-weight:800;color:#C0392B}
-.pkg-card .price .pkg-card .price small{font-size:12px;font-weight:400;color:#888}
-.pkg-card .saving{font-size:11px;color:#27AE60;margin-top:1px}
-.pkg-card .quota{font-size:11px;color:#888;margin-top:2px}
-
-/* PRO 专属卡片 */
-.pro-card{grid-column:1/-1;background:linear-gradient(135deg,#1a1a2e,#16213e);border:2px solid #C8A951;border-radius:16px;padding:28px 20px;text-align:center}
-.pro-card .pro-badge{display:inline-block;background:linear-gradient(135deg,#C8A951,#D4AF37);color:#1a1a2e;font-size:11px;font-weight:800;padding:3px 14px;border-radius:12px;margin-bottom:12px;letter-spacing:2px}
-.pro-card .pro-title{font-size:24px;font-weight:800;color:#D4AF37;margin-bottom:10px}
-.pro-card .pro-price{font-size:32px;font-weight:900;color:#fff;margin-bottom:4px}
-.pro-card .pro-price small{font-size:13px;font-weight:400;color:#777}
-.pro-card .pro-features{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:16px 0}
-.pro-card .pro-feat{background:rgba(255,255,255,.06);color:#ccc;font-size:11px;padding:5px 12px;border-radius:14px}
-.pro-card .pro-cta{display:inline-block;margin-top:8px;padding:12px 36px;border-radius:25px;font-size:14px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#C8A951,#D4AF37);color:#1a1a2e;border:none;transition:all .2s}
-.pro-card .pro-cta:hover{transform:scale(1.03);box-shadow:0 4px 20px rgba(200,169,81,.3)}
+/* Features */
+.features{display:flex;flex-direction:column;gap:10px;margin:24px 0 28px}
+.feature{
+  display:flex;align-items:center;gap:14px;
+  background:#fff;border-radius:14px;padding:16px 18px;
+  border:1px solid rgba(192,57,43,.05);box-shadow:0 1px 8px rgba(0,0,0,.02)
+}
+.feature .ficon{font-size:26px;width:40px;text-align:center}
+.feature .ftext{flex:1}
+.feature .ftext strong{display:block;font-size:15px;color:#1a1a1a;font-weight:600}
+.feature .ftext span{font-size:13px;color:#999}
 
 /* CTA */
+.cta-section{text-align:center;margin:8px 0 16px}
+.btn-primary{
+  display:block;width:100%;padding:16px;border-radius:14px;border:none;
+  background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;
+  font-size:17px;font-weight:700;cursor:pointer;transition:all .2s;
+  letter-spacing:.5px;box-shadow:0 4px 16px rgba(192,57,43,.3)
+}
+.btn-primary:active{transform:scale(.97);opacity:.9}
+.btn-secondary{
+  display:block;width:100%;padding:13px;border-radius:14px;
+  border:1.5px solid #e8e0d8;background:#fff;color:#888;
+  font-size:14px;cursor:pointer;margin-top:10px;transition:all .15s
+}
+.btn-secondary:active{background:#f8f6f2}
+.cta-hint{font-size:12px;color:#bbb;margin-top:10px;line-height:1.6}
 
-/* ---- 虾客行工作室 ---- */
-.studio-section{padding:0 16px 16px;max-width:500px;margin:0 auto}
-.studio-hero{background:linear-gradient(135deg,#1a1a2e,#2d1b4e,#1a1a2e);border-radius:18px;padding:28px 18px;text-align:center;margin-bottom:14px;border:1px solid rgba(139,92,246,.25);position:relative;overflow:hidden}
-.studio-hero::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle at 30% 50%,rgba(139,92,246,.08) 0%,transparent 50%),radial-gradient(circle at 70% 30%,rgba(255,179,71,.05) 0%,transparent 50%);pointer-events:none}
-.studio-hero .sh-icon{font-size:36px;margin-bottom:6px;position:relative}
-.studio-hero h3{font-size:18px;font-weight:800;color:#fff;position:relative;margin-bottom:2px}
-.studio-hero .sh-sub{font-size:12px;color:rgba(255,255,255,.5);position:relative;margin-bottom:10px}
-.studio-hero .sh-tags{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;position:relative;margin-bottom:14px}
-.sh-tag{padding:3px 12px;border-radius:12px;font-size:11px;font-weight:500}
-.sh-tag.mv{background:rgba(255,179,71,.15);color:#FFB347;border:1px solid rgba(255,179,71,.25)}
-.sh-tag.anime{background:rgba(139,92,246,.15);color:#A78BFA;border:1px solid rgba(139,92,246,.25)}
-.sh-tag.studio{background:rgba(74,158,255,.15);color:#60A5FA;border:1px solid rgba(74,158,255,.25)}
-.sh-btn{display:inline-block;padding:10px 28px;border-radius:22px;font-size:13px;font-weight:600;text-decoration:none;position:relative;background:linear-gradient(135deg,#8B5CF6,#7C3AED);color:#fff;transition:all .2s}
-.sh-btn:active{transform:scale(.96)}
+/* Pricing */
+.pricing{background:#fff;border-radius:14px;padding:18px 16px;margin:8px 0;border:1px solid #f0ebe4}
+.pricing h3{font-size:13px;color:#888;margin-bottom:12px;font-weight:600}
+.price-row{display:flex;gap:10px}
+.price-item{flex:1;text-align:center;padding:12px 8px;border-radius:10px;background:#FDF8F6}
+.price-item .amt{font-size:24px;font-weight:800;color:#C0392B}
+.price-item .amt small{font-size:13px;color:#888;font-weight:400}
+.price-item .per{font-size:12px;color:#999;margin-top:2px}
+.price-item.highlight{border:1px solid rgba(192,57,43,.15);background:#fff5f2}
+.price-item .save{font-size:10px;color:#27AE60;font-weight:600;margin-top:2px}
 
-.studio-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
-.sc-card{background:#fff;border-radius:14px;padding:18px 12px;text-align:center;border:1px solid rgba(139,92,246,.1);transition:transform .15s;text-decoration:none;color:inherit;display:block}
-.sc-card:active{transform:scale(.97)}
-.sc-card .scc-icon{font-size:30px;margin-bottom:4px}
-.sc-card h4{font-size:13px;font-weight:700;margin-bottom:2px;color:#2C2C2C}
-.sc-card p{font-size:11px;color:#888;line-height:1.5}
-
-/* ---- AI传薪计划 · 志愿者招募 ---- */
-.recruit-section{padding:0 16px 20px;max-width:500px;margin:0 auto}
-.recruit-card{background:linear-gradient(135deg,#FBF5EF,#FDF2E9);border-radius:18px;padding:24px 16px;text-align:center;border:2px solid rgba(139,69,19,.12);position:relative;overflow:hidden}
-.recruit-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#8B2500,#C4956A,#5B8C3E,#C4956A,#8B2500)}
-.recruit-card .rc-badge{display:inline-block;background:rgba(91,140,62,.12);color:#5B8C3E;font-size:11px;font-weight:700;padding:3px 14px;border-radius:12px;margin-bottom:10px;letter-spacing:1px}
-.recruit-card .rc-title{font-size:16px;font-weight:800;color:#5A3E2B;margin-bottom:4px}
-.recruit-card .rc-sub{font-size:12px;color:#8B6543;margin-bottom:12px;line-height:1.6}
-.recruit-card .rc-logos{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px}
-.recruit-card .rc-logos img{height:32px;opacity:.85}
-.recruit-card .rc-logos .rc-times{color:#C4956A;font-weight:700;font-size:14px}
-.recruit-card .rc-roles{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:14px}
-.rc-role{background:#fff;border:1px solid rgba(139,69,19,.15);padding:5px 14px;border-radius:14px;font-size:11px;color:#5A3E2B;font-weight:500}
-.rc-cta{display:inline-block;padding:10px 30px;border-radius:22px;font-size:13px;font-weight:700;text-decoration:none;background:linear-gradient(135deg,#8B2500,#A0522D);color:#fff;transition:all .2s}
-.rc-cta:active{transform:scale(.96)}
-
-/* ---- AI传薪计划 · 项目使命 ---- */
-.mission-block{background:linear-gradient(180deg,#1a1a2e 0%,#2d1b4e 100%);padding:32px 16px;text-align:center;position:relative;overflow:hidden;margin:-1px 0 0}
-.mission-block::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 20% 30%,rgba(139,92,246,.1) 0%,transparent 50%),radial-gradient(circle at 80% 70%,rgba(255,179,71,.06) 0%,transparent 50%),radial-gradient(circle at 50% 50%,rgba(91,140,62,.05) 0%,transparent 70%);pointer-events:none}
-.mission-block .ms-badge{display:inline-block;background:rgba(139,92,246,.2);color:#A78BFA;font-size:11px;font-weight:700;padding:4px 16px;border-radius:14px;margin-bottom:12px;letter-spacing:2px;border:1px solid rgba(139,92,246,.3);position:relative}
-.mission-block .ms-title{font-size:28px;font-weight:900;color:#fff;position:relative;margin-bottom:6px;letter-spacing:2px}
-.mission-block .ms-fire{display:inline-block;animation:flicker 3s ease-in-out infinite}
-@keyframes flicker{0%,100%{filter:brightness(1)}50%{filter:brightness(1.4)}}
-.mission-block .ms-subtitle{font-size:14px;color:rgba(255,255,255,.55);position:relative;margin-bottom:16px;line-height:1.7}
-.mission-block .ms-subtitle strong{color:#FFB347;font-weight:700}
-.mission-block .ms-partners{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px;position:relative;flex-wrap:wrap}
-.mission-block .ms-partners img{height:28px;opacity:.8}
-.mission-block .ms-partners .ms-x{color:rgba(255,255,255,.3);font-size:14px}
-.mission-block .ms-partners .ms-partner-name{color:rgba(255,255,255,.6);font-size:12px;font-weight:600;line-height:1.4}
-.mission-block .ms-pillars{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;position:relative;margin-bottom:16px}
-.ms-pillar{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 10px;text-align:center;min-width:80px;flex:1;max-width:140px}
-.ms-pillar .mp-icon{font-size:22px;margin-bottom:4px}
-.ms-pillar .mp-label{font-size:11px;color:rgba(255,255,255,.6);font-weight:600}
-.mission-block .ms-scroll-hint{font-size:18px;color:rgba(255,255,255,.2);animation:bounce 2s ease-in-out infinite;position:relative}
-@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-.cta-section{padding:12px 20px 36px;text-align:center;max-width:400px;margin:0 auto}
-.cta-section .picked{font-size:12px;color:#888;margin-bottom:12px}
-.btn-pay{display:block;width:100%;padding:14px;border-radius:30px;font-size:16px;font-weight:700;border:none;cursor:pointer;background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;transition:all .2s}
-.btn-pay:disabled{opacity:.5;cursor:not-allowed}
-.cta-section .note{font-size:12px;color:#777;margin-top:8px}
+/* QR for non-WeChat */
+.qr-section{display:none;text-align:center;margin-top:20px;padding:24px 16px;background:#fff;border-radius:14px;border:1px solid #f0ebe4}
+.qr-section.show{display:block}
+.qr-section img{width:170px;height:170px;border-radius:10px;margin:8px auto}
+.qr-section .hint{font-size:13px;color:#888;line-height:1.7}
 
 /* Footer */
-.footer{padding:24px 16px;text-align:center;font-size:12px;color:#777;border-top:1px solid #eee}
-.footer .brand{font-size:12px;color:#555;font-weight:600;margin-bottom:2px}
-.footer .beta-note{color:#E67E22;font-size:11px;margin-top:4px}
-
-/* Modals */
-.qr-modal,.pro-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:200;align-items:center;justify-content:center}
-.qr-modal.show,.pro-modal.show{display:flex}
-.qr-modal{background:rgba(0,0,0,.45);z-index:100}
-.pro-modal{background:rgba(0,0,0,.65);z-index:210}
-.qr-box{background:#fff;border-radius:16px;padding:24px 18px;width:90%;max-width:300px;text-align:center}
-.qr-box h3{font-size:15px;margin-bottom:4px}
-.qr-box .tip{font-size:11px;color:#888;margin-bottom:12px}
-.qr-box .qr-tip{font-size:12px;color:#777;margin-top:6px}
-.qr-box .btn-close{margin-top:12px;padding:8px 24px;border-radius:20px;font-size:12px;border:1px solid #ddd;background:#fff;cursor:pointer;color:#888}
-
-@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
-.qr-wrap{position:relative;width:200px;height:200px;margin:0 auto 8px}
-.qr-loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;color:#999}
-.qr-hint{font-size:12px;color:#C0392B;font-weight:600;margin-bottom:14px}
-
-.pro-box{background:#fff;border-radius:18px;padding:28px 20px;width:90%;max-width:340px;text-align:center;animation:slideUp .3s;position:relative}
-.pro-modal-close{position:absolute;top:10px;right:14px;font-size:18px;color:#777;cursor:pointer}
-.pro-modal-icon{font-size:42px;margin-bottom:4px}
-.pro-box h3{font-size:20px;color:#C8A951;margin-bottom:8px}
-.pro-modal-desc{font-size:13px;color:#555;margin-bottom:14px;line-height:1.6}
-.pro-modal-btn{display:block;width:100%;padding:14px;border-radius:25px;font-size:15px;font-weight:700;border:none;cursor:pointer;background:linear-gradient(135deg,#C8A951,#D4AF37);color:#1a1a2e;margin-top:8px}
-
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:999;background:#2C2C2C;color:#fff;padding:10px 24px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none}
-.toast.show{opacity:1}
-.loading{text-align:center;padding:30px;font-size:13px;color:#888}
-@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-
-/* ---- 免费体验入口 ---- */
-.bot-entry{padding:0 16px 4px;max-width:500px;margin:0 auto;text-align:center}
-.bot-card{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:16px 14px;margin-bottom:14px;border:1px solid rgba(192,57,43,.06);text-align:left}
-.bot-avatar{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#C0392B,#A93226);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
-.bot-info h3{font-size:15px;font-weight:600}
-.bot-info p{font-size:12px;color:#888;margin-top:1px}
-.bot-qr-area{background:#fff;border-radius:14px;padding:20px;border:1px solid rgba(192,57,43,.06)}
-.qr-wrap-sm{width:200px;height:200px;margin:0 auto 10px;position:relative;background:#f8f6f2;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.qr-wrap-sm .bot-qr-img{width:180px;height:180px;border-radius:8px}
-.qr-refresh{position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:12px;padding:4px 10px;font-size:11px;cursor:pointer;z-index:2}
-.bot-qr-tip{font-size:13px;font-weight:600;color:#C0392B;margin-bottom:2px}
-.bot-qr-sub{font-size:11px;color:#888}
-
-/* ---- 公众号二维码入口 ---- */
-.qr-entry{text-align:center;padding:0 16px 16px;max-width:500px;margin:0 auto}
-.qr-entry-card{background:#fff;border-radius:16px;padding:24px 20px;border:1px solid rgba(192,57,43,.08);box-shadow:0 2px 12px rgba(0,0,0,.03)}
-.qr-entry-card .qr-entry-img{width:180px;height:180px;margin:0 auto 12px;background:#f0f0f0;border-radius:12px;overflow:hidden}
-.qr-entry-card .qr-entry-img img{width:100%;height:100%}
-.qr-entry-card .qr-entry-tip{font-size:13px;font-weight:600;color:#C0392B;margin-bottom:2px}
-.qr-entry-card .qr-entry-sub{font-size:11px;color:#888}
+.footer{text-align:center;padding:28px 0 8px;font-size:11px;color:#ccc}
 </style>
 </head>
 <body>
+<div class="container">
 
-<!-- 公测标识条 -->
-<div class="beta-ribbon">
-  <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-  🧪 公测版本 · 产品持续优化中
-  <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-</div>
+  <div class="hero">
+    <div class="logo-wrap"><span class="emoji">🦞</span></div>
+    <h1>享客虾</h1>
+    <div class="tagline">AI · 创作伙伴</div>
+  </div>
 
-<!-- Hero -->
-<div class="hero">
-  <div class="emoji">🦞</div>
-  <h1>享客虾</h1>
-  <p class="slogan">享客虾，虾客行 — 微信里的私人AI秘书</p>
-</div>
-
-<!-- AI传薪计划 · 品牌宣言 -->
-<div class="mission-block">
-  <div class="ms-badge">🌱 公益文化传播项目</div>
-  <div class="ms-title">AI<span class="ms-fire">🔥</span>传薪</div>
-  <div class="ms-subtitle">
-    薪火相传，以AI之力传递文化温度<br>
-    <strong>虾客行工作室</strong> × <strong>新青教育发展基金会</strong><br>
-    联合发起
-  </div>
-  <div class="ms-partners">
-    <img src="https://hai.pangoozn.com/static/logo-zhiqing-sm.png" alt="新知青公益" onerror="this.style.display='none'">
-    <span class="ms-x">×</span>
-    <span class="ms-partner-name">新青教育<br>发展基金会</span>
-  </div>
-  <div class="ms-pillars">
-    <div class="ms-pillar">
-      <div class="mp-icon">🎬</div>
-      <div class="mp-label">AI视频创作</div>
-    </div>
-    <div class="ms-pillar">
-      <div class="mp-icon">📖</div>
-      <div class="mp-label">文化传承</div>
-    </div>
-    <div class="ms-pillar">
-      <div class="mp-icon">🤝</div>
-      <div class="mp-label">公益传播</div>
-    </div>
-    <div class="ms-pillar">
-      <div class="mp-icon">👥</div>
-      <div class="mp-label">志愿者社群</div>
-    </div>
-  </div>
-</div>
-
-<!-- 聊天演示区 -->
-<div class="section-title">💬 像这样聊天</div>
-<div class="chat-demo" id="chatDemo">
-  <div class="msg user"><div class="bubble">帮我查一下最近AI行业有什么大新闻</div><div class="time">14:22</div></div>
-  <div class="msg ai"><div class="bubble">🔍 帮你搜了一下——本周值得关注的有：<br><br>1️⃣ DeepSeek 发布 V4 系列模型，价格大幅降低<br>2️⃣ OpenAI 开源了轻量级模型<br>3️⃣ Google I/O 上有多个AI产品更新<br><br>想详细看哪一条？</div><div class="time">14:22</div></div>
-  <div class="msg user"><div class="bubble">把这几个新闻整理成一份PDF报告发给我</div><div class="time">14:23</div></div>
-  <div class="msg ai"><div class="bubble">📄 已生成报告：<br><br>《2026年05月AI行业动态简报》<br>包含3大要闻 + 市场影响分析<br><br>👉 点击下载PDF</div><div class="time">14:23</div></div>
-  <div class="msg user"><div class="bubble">对了，帮我想个项目代号，要霸气一点的</div><div class="time">14:24</div></div>
-  <div class="msg ai">
-    <div class="typing"><span></span><span></span><span></span></div>
-    <div class="time">14:24</div>
-  </div>
-</div>
-
-<!-- 功能亮点 -->
-<div class="section-title">✨ 能做什么</div>
-<div class="features">
-  <div class="feat-card">
-    <div class="icon">🔍</div>
-    <h3>实时搜索</h3>
-    <p>联网查新闻、行情、资料，即时获取最新信息</p>
-  </div>
-  <div class="feat-card">
-    <div class="icon">📄</div>
-    <h3>生成文档</h3>
-    <p>一句话生成PDF报告、方案、简历，直接下载</p>
-  </div>
-  <div class="feat-card">
-    <div class="icon">📁</div>
-    <h3>文件管理</h3>
-    <p>上传图片/文档，AI帮你整理、总结、归档</p>
-  </div>
-  <div class="feat-card">
-    <div class="icon">🧠</div>
-    <h3>长期记忆</h3>
-    <p>记住你的偏好和需求，越用越懂你</p>
-  </div>
-  <div class="feat-card">
-    <div class="icon">🎵</div>
-    <h3>AI写歌</h3>
-    <p>用文字描述想要的歌，AI为你创作专属音乐</p>
-  </div>
-  <div class="feat-card">
-    <div class="icon">✍️</div>
-    <h3>写查译总</h3>
-    <p>写文案、查资料、翻译、总结，日常效率拉满</p>
-  </div>
-</div>
-
-<!-- 虾客行工作室 -->
-<div class="section-title">🎬 虾客行工作室</div>
-<div class="studio-section">
-  <div class="studio-hero">
-    <div class="sh-icon">🎬</div>
-    <h3>AI驱动的创意视频工坊</h3>
-    <div class="sh-sub">歌词 → AI作曲 → AI视频 → 完整MV · 一站式创作</div>
-    <div class="sh-tags">
-      <span class="sh-tag mv">🎵 AI音乐MV</span>
-      <span class="sh-tag anime">🎨 动漫视频</span>
-      <span class="sh-tag studio">🎬 影视剪辑</span>
-    </div>
-    <a class="sh-btn" href="/static/mv/yehuo.html" target="_blank">🎬 观看示例MV</a>
-  </div>
-  <div class="studio-cards">
-    <a class="sc-card" href="/static/mv/yehuo.html" target="_blank">
-      <div class="scc-icon">🎵</div>
-      <h4>AI音乐MV</h4>
-      <p>输入歌词 → AI作曲+视频 → 完整音乐MV</p>
-    </a>
-    <div class="sc-card">
-      <div class="scc-icon">🎨</div>
-      <h4>AI动漫短片</h4>
-      <p>文字创意 → AI生成动画故事</p>
-    </div>
-    <div class="sc-card">
-      <div class="scc-icon">✂️</div>
-      <h4>智能剪辑</h4>
-      <p>自动分镜 · 字幕同步 · 特效合成</p>
-    </div>
-    <div class="sc-card">
-      <div class="scc-icon">📺</div>
-      <h4>品牌视频</h4>
-      <p>企业宣传 · 产品展示 · 公益短片</p>
-    </div>
-  </div>
-</div>
-
-<!-- AI传薪计划 · 公益志愿者招募 -->
-<div class="recruit-section">
-  <div class="recruit-card">
-    <div class="rc-badge">🌱 志愿者招募</div>
-    <div class="rc-title">AI传薪计划</div>
-    <div class="rc-sub">虾客行工作室 × 新青教育发展基金会<br>用AI技术创作有温度的文化内容 · 薪火相传 · 传播公益</div>
-    <div class="rc-logos">
-      <img src="https://hai.pangoozn.com/static/logo-zhiqing-sm.png" alt="新知青公益" onerror="this.style.display='none'">
-      <span class="rc-times">×</span>
-      <span style="font-size:13px;font-weight:700;color:#5A3E2B">新青教育<br>发展基金会</span>
-    </div>
-    <div class="rc-roles">
-      <span class="rc-role">🎬 视频创作</span>
-      <span class="rc-role">✍️ 内容策划</span>
-      <span class="rc-role">📣 公益传播</span>
-      <span class="rc-role">🤖 AI技术</span>
-      <span class="rc-role">🎨 视觉设计</span>
-      <span class="rc-role">📖 文化研究</span>
-    </div>
-    <a class="rc-cta" href="/xkx/" target="_blank">📩 加入我们 · 成为志愿者</a>
-  </div>
-</div>
-
-<!-- 免费体验入口 -->
-<div class="section-title">🆓 免费体验 · 每日 50 条</div>
-<div class="bot-entry">
-  <div class="bot-card">
-    <div class="bot-avatar">🦞</div>
-    <div class="bot-info">
-      <h3>享客虾 · 私人AI秘书</h3>
-      <p>扫码绑定，微信里直接聊天</p>
-    </div>
-  </div>
-  <div class="bot-qr-area" id="botQrArea">
-    <div class="qr-wrap-sm">
-      <img id="botQrImg" alt="扫码绑定" class="bot-qr-img">
-      <div class="qr-refresh" onclick="refreshBotQR()">🔄 刷新</div>
-    </div>
-    <p class="bot-qr-tip">📱 用微信扫码 · 绑定你的私人AI</p>
-    <p class="bot-qr-sub">免费 50 条/天 · 用完可升级 ↑</p>
-  </div>
-</div>
-
-<div class="section-title">🚀 三步开始</div>
-<div class="steps">
-  <div class="step-row">
-    <div class="step-num">1</div>
-    <div class="step-info">
-      <h3>微信扫码绑定</h3>
-      <p>扫上方二维码，微信确认绑定你的AI秘书</p>
-    </div>
-    <div class="step-arrow">→</div>
-  </div>
-  <div class="step-row">
-    <div class="step-num">2</div>
-    <div class="step-info">
-      <h3>直接发消息聊天</h3>
-      <p>像跟朋友聊天一样，想问什么就问什么</p>
-    </div>
-    <div class="step-arrow">→</div>
-  </div>
-  <div class="step-row">
-    <div class="step-num">3</div>
-    <div class="step-info">
-      <h3>不够用？升级会员</h3>
-      <p>每日额度用完自动提醒，¥9.9/月起不限量</p>
-    </div>
-    <div class="step-arrow">✨</div>
-  </div>
-</div>
-
-<!-- 服务号入口 -->
-<div class="qr-entry" id="qrEntry" style="display:none">
-</div>
-
-<!-- 用户状态条 + 订阅状态面板 -->
-<div class="user-bar" id="userBar">
-  <div class="avatar" id="userAvatar"><span style="font-size:20px">🦞</span></div>
-  <div class="info">
-    <div class="nick" id="userNick">加载中…</div>
-    <div class="sub" id="userSub">未开通 · 查看下方套餐</div>
-  </div>
-  <button class="sync-btn" id="syncBtn" onclick="syncWechatInfo()" title="同步微信头像昵称">🔄</button>
-</div>
-
-<div class="status-panel" id="statusPanel">
-  <div class="status-card">
-    <div class="status-grid">
-      <div class="stat-item"><div class="val" id="stPlan">--</div><div class="lbl">当前套餐</div></div>
-      <div class="stat-item"><div class="val" id="stUsed">0/0</div><div class="lbl">本月用量</div></div>
-      <div class="stat-item" id="stDaysItem"><div class="val" id="stDays">0</div><div class="lbl">剩余天数</div></div>
-    </div>
-    <div class="status-actions">
-      <button class="btn-renew" onclick="document.getElementById('plansSection').scrollIntoView({behavior:'smooth'})">📅 续费</button>
-      <button class="btn-upgrade" onclick="document.getElementById('plansSection').scrollIntoView({behavior:'smooth'})">⬆️ 升级套餐</button>
-    </div>
-  </div>
-</div>
-
-<!-- 套餐选择 -->
-<div class="plans-section" id="plansSection">
-  <div class="section-title" style="text-align:left;padding-left:0;justify-content:flex-start">💰 套餐选择</div>
-  <div class="promo-banner">🧪 公测中 · 早鸟优惠 · 感谢体验</div>
-  <div class="tier-tabs" id="tierTabs">
-    <div class="tier-tab active" onclick="switchTier(0)">🥉 基础版</div>
-    <div class="tier-tab" onclick="switchTier(1)">🥈 标准版</div>
-    <div class="tier-tab" onclick="switchTier(2)">💎 PRO版</div>
-  </div>
-  <div class="pkg-grid" id="pkgGrid"></div>
-</div>
-
-<div class="cta-section">
-  <p class="picked">已选：<span id="pickedName">请先点击上方套餐</span></p>
-  <a class="btn-pay" id="payBtn" style="pointer-events:none;opacity:.5" onclick="doPay()">微信支付开通</a>
-  <p class="note">支付即同意服务条款 · 可随时取消</p>
-</div>
-
-<!-- PRO 联系弹窗 -->
-<div class="pro-modal" id="proModal">
-  <div class="pro-box">
-    <div class="pro-modal-close" onclick="closeProModal()">✕</div>
-    <div class="pro-step" id="proStep1">
-      <div class="pro-modal-icon">💳</div>
-      <h3>支付定金 ¥200</h3>
-      <p class="pro-modal-desc">扫码支付定金后<br>即可查看专属客服二维码</p>
-      <div class="qr-wrap">
-        <img id="proDepositQR" src="static/pro-deposit-qr.jpg" alt="定金支付码" style="width:200px;height:200px;background:#f0f0f0;border-radius:8px">
-        <div class="qr-loading" id="proDepositLoading" style="display:none"></div>
+  <div class="features">
+    <div class="feature">
+      <div class="ficon">🎵</div>
+      <div class="ftext">
+        <strong>AI 写歌</strong>
+        <span>说句话，AI 为你写一首原创歌曲</span>
       </div>
-      <p class="qr-hint">支付 ¥200 定金</p>
-      <p style="font-size:11px;color:#888;margin-top:2px">总价 ¥880/年 · 尾款 ¥680</p>
-      <button class="pro-modal-btn" onclick="showProCustomerQR()">✅ 我已支付定金</button>
     </div>
-    <div class="pro-step" id="proStep2" style="display:none">
-      <div class="pro-modal-icon">💎</div>
-      <h3>专属客服已就绪</h3>
-      <p class="pro-modal-desc">添加微信，一对一沟通需求<br>支付尾款 ¥680 后开通服务</p>
-      <div class="qr-wrap">
-        <img id="proCustomerQR" src="static/pro-customer-qr.jpg" alt="专属客服二维码" style="width:200px;height:200px;background:#f0f0f0;border-radius:8px">
-        <div class="qr-loading" id="proCustomerLoading" style="display:none"></div>
+    <div class="feature">
+      <div class="ficon">🎬</div>
+      <div class="ftext">
+        <strong>照片 MV</strong>
+        <span>传照片 → 识图配诗 → 配乐 → 出片</span>
       </div>
-      <p class="qr-hint">添加专属客服</p>
-      <button class="pro-modal-btn" onclick="closeProModal()">知道了</button>
+    </div>
+    <div class="feature">
+      <div class="ficon">🎤</div>
+      <div class="ftext">
+        <strong>声音克隆</strong>
+        <span>用你的声音唱任何歌</span>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="ficon">🦞</div>
+      <div class="ftext">
+        <strong>AI 对话</strong>
+        <span>懂音乐的创作伙伴，无所不聊</span>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Footer -->
-<div class="footer">
-  <div class="brand">🦞 享客虾 · 私人AI秘书</div>
-  <div>由 智享家 提供技术支持</div>
-  <div class="beta-note">🧪 公测版本 · v0.5.3</div>
-</div>
+  <div class="cta-section" id="wechatCTA">
+    <button class="btn-primary" onclick="startBind()">📱 添加享客虾 Bot</button>
+    <div class="cta-hint">在微信中使用 · 免费体验 50 条</div>
+  </div>
 
-<!-- 微信扫码（合规软引导） -->
-<div class="qr-modal" id="qrModal">
-  <div class="qr-box">
-    <h3>📱 在微信中体验完整功能</h3>
-    <p class="tip">微信搜索「智享家」服务号</p>
-    <p class="qr-tip">AI嗨卡 · 享客虾 皆在其中</p>
-    <button class="btn-close" onclick="document.getElementById('qrModal').classList.remove('show')">关闭</button>
+  <div class="pricing">
+    <h3>会员方案</h3>
+    <div class="price-row">
+      <div class="price-item">
+        <div class="amt">¥9.9 <small>/月</small></div>
+        <div class="per">无限创作</div>
+      </div>
+      <div class="price-item highlight">
+        <div class="amt">¥99 <small>/年</small></div>
+        <div class="per">省 ¥19.8</div>
+        <div class="save">🔥 特惠</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="qr-section" id="qrSection">
+    <p style="font-size:14px;color:#888;margin-bottom:8px">扫码添加享客虾 Bot</p>
+    <img id="qrImg" src="" alt="二维码">
+    <div class="hint">微信扫一扫 · 立即体验</div>
+  </div>
+
+  <div class="footer">
+    <span>🦞 享客虾 · AI 传薪计划 · 智享家出品</span>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
-
-
-<!-- 统一用户体系：wx-auth + analytics（从主站加载） -->
-<script src="https://hai.pangoozn.com/static/wx-auth.js"></script>
-<script src="https://hai.pangoozn.com/static/analytics-tracker.js"></script>
 <script>
-// 统一设备标识
+// UA 检测：微信内 vs 外部
 (function(){
-  var du = localStorage.getItem('device_uuid') || localStorage.getItem('DEVICE_UUID') || '';
-  if(!du || du.length < 8){
-    du = 'web_' + Date.now() + '_' + Math.random().toString(36).slice(2,10);
-    try{ localStorage.setItem('device_uuid', du); localStorage.setItem('DEVICE_UUID', du); }catch(e){}
+  var isWx = /MicroMessenger/i.test(navigator.userAgent);
+  if (!isWx) {
+    document.getElementById('wechatCTA').style.display = 'none';
+    document.getElementById('qrSection').classList.add('show');
+    document.getElementById('qrImg').src = '/api/bot/qrcode/image?' + Date.now();
   }
 })();
 
-let selectedPlanId = null;
-let allPlans = [];
-let currentTier = 0;
-let mySub = null;
-
-function isWechat(){ return /micromessenger/i.test(navigator.userAgent); }
-function isWechatBot(){
-  // 微信爬虫/搜索引擎Bot检测 — 防止OAuth重定向导致微信封域名
-  var ua = navigator.userAgent;
-  if(/WeChatSpider|WeChatBot|Tencent_Security|Bytespider|360Spider|YisouSpider|Sogou|Baiduspider|Googlebot|bingbot|Slurp|DuckDuckBot|facebookexternalhit|Twitterbot|ia_archiver|PetalBot|SemrushBot|DotBot|AhrefsBot/.test(ua)) return true;
-  if(navigator.webdriver) return true;
-  return false;
+function startBind() {
+  // 微信内 → OAuth → 绑定页
+  var cb = encodeURIComponent(window.location.origin + '/xkx/bind');
+  window.location.href = 'https://ai.pangoozn.com/api/auth-center/api/auth/wechat-redirect?direct=1&target=' + cb + '&source=xkx';
 }
-
-// 聊天演示动画 — 重启打字动画
-(function demoLoop(){
-  const typing = document.querySelector('#chatDemo .typing');
-  if(typing){
-    setInterval(()=>{
-      const bubbles = document.querySelectorAll('#chatDemo .msg.ai .bubble');
-      bubbles.forEach(b=>b.style.animation='none');
-      void typing.offsetWidth;
-      bubbles.forEach((b,i)=>{
-        b.style.animation=`msgIn .4s ease-out ${i*.5}s both`;
-      });
-    }, 8000);
-  }
-})();
-
-function refreshBotQR(){
-  var img = document.getElementById('botQrImg');
-  if(img) img.src = '/xkx/api/bot/qrcode/image?t=' + Date.now();
-  showToast('🔄 二维码已刷新');
-}
-
-// 页面加载时生成第一个二维码
-(function(){
-  var img = document.getElementById('botQrImg');
-  if(img) img.src = '/xkx/api/bot/qrcode/image?t=' + Date.now();
-})();
-
-function showToast(msg){
-  var t = document.getElementById('toast');
-  if(!t) return;
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(function(){ t.classList.remove('show'); }, 2500);
-}
-
-// 定时刷新二维码（每 3 分钟）
-setInterval(function(){
-  var img = document.getElementById('botQrImg');
-  if(img) img.src = '/xkx/api/bot/qrcode/image?t=' + Date.now();
-}, 180000);
-
-// ═══ 统一用户体系：OAuth + 双系统同步 + wx.config ═══
-(async function initWechat(){
-  if(!isWechat()) return;
-  if(isWechatBot()) return;  // 合规：Bot/爬虫不触发OAuth
-
-  // 使用统一 wx-auth（主站 WX_AUTH 对象）
-  if(window.WX_AUTH){
-    // 无 openid → 走主站统一 OAuth
-    if(!WX_AUTH.openid){
-      var deviceUuid = localStorage.getItem('device_uuid') || '';
-      // 存下来等 OAuth 回来用
-      if(deviceUuid) localStorage.setItem('_pending_device_uuid', deviceUuid);
-      WX_AUTH.login();
-      return;
-    }
-  } else {
-    // 降级：旧版 OAuth
-    if(!localStorage.getItem('wx_openid')){
-      location.href = 'https://hai.pangoozn.com/api/auth/wechat-redirect?target=' + encodeURIComponent('/xkx/');
-      return;
-    }
-  }
-
-  var openid = WX_AUTH.openid || localStorage.getItem('wx_openid');
-  var deviceUuid = localStorage.getItem('device_uuid') || localStorage.getItem('_pending_device_uuid') || '';
-
-  // 同步到主站用户体系
-  if(openid && deviceUuid){
-    fetch('https://hai.pangoozn.com/api/auth/touch', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({openid: openid, device_uuid: deviceUuid})
-    }).catch(function(){});
-    // 同步到享客虾用户体系
-    fetch('api/auth/touch', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({openid: openid, device_uuid: deviceUuid})
-    }).catch(function(){});
-  }
-
-  // 自动同步头像昵称
-  var cachedAvatar = localStorage.getItem('wx_avatar');
-  if(!cachedAvatar && openid){
-    try{
-      var sr = await fetch('https://hai.pangoozn.com/api/user/device-profile', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({device_uuid: deviceUuid})
-      });
-      var sd = await sr.json();
-      if(sd.nickname){
-        localStorage.setItem('wx_nickname', sd.nickname);
-        if(sd.avatar_url) localStorage.setItem('wx_avatar', sd.avatar_url);
-      }
-    }catch(e){}
-  }
-  
-  // 初始化 wx.config（用于支付）—— 签名接口在智享家主站
-  try{
-    const url = encodeURIComponent(location.href.split('#')[0]);
-    const resp = await fetch('/api/wechat/jsapi/signature?url=' + url);
-    const cfg = await resp.json();
-    wx.config({
-      debug: false,
-      appId: cfg.appId,
-      timestamp: cfg.timestamp,
-      nonceStr: cfg.nonceStr,
-      signature: cfg.signature,
-      jsApiList: ['chooseWXPay']
-    });
-    wx.ready(function(){
-      window._wxReady = true;
-    });
-    wx.error(function(err){
-      console.warn('wx.config失败:', err);
-    });
-  }catch(e){ console.warn('JS-SDK签名失败:', e); }
-})();
-
-// 加载套餐
-fetch('api/plans').then(r=>r.json()).then(data=>{
-  allPlans = data;
-  renderPlans();
-}).catch(()=>{
-  document.getElementById('pkgGrid').innerHTML='<div class="loading" style="color:#c33">加载失败，请刷新</div>';
-});
-
-// 加载公众号二维码（入口）
-fetch('api/wechat/follow-qrcode').then(r=>r.json()).then(d=>{
-  if(d.qr_url){
-    document.getElementById('qrEntryImg').src = d.qr_url;
-  }
-}).catch(()=>{});
-
-// 查用户状态（统一用户体系：openid + device_uuid 双标识）
-const openid = localStorage.getItem('wx_openid') || '';
-const deviceUuid = localStorage.getItem('device_uuid') || '';
-if(openid || deviceUuid){
-  var qs = openid ? 'openid=' + openid : 'device_uuid=' + deviceUuid;
-  if(openid && deviceUuid) qs += '&device_uuid=' + deviceUuid;
-  fetch('api/me?' + qs).then(r=>r.json()).then(data=>{
-    mySub = data;
-    showUserBar(data);
-    if(data.subscribed){ showStatus(data); }
-    setTimeout(()=>{
-      fetch(`api/me/wechat-follow?openid=${openid}`).then(r=>r.json()).then(d=>{
-        if(!d.followed && !d.fallback){ showFollowModal(); }
-      }).catch(()=>{});
-    },1500);
-  }).catch(()=>{
-    document.getElementById('userBar').classList.add('show');
-    document.getElementById('userNick').textContent = '微信用户';
-    document.getElementById('userSub').textContent = '未开通 · 查看下方套餐';
-  });
-}
-
-function showUserBar(data){
-  const bar = document.getElementById('userBar');
-  bar.classList.add('show');
-  var nickname = data.nickname || localStorage.getItem('wx_nickname') || '微信用户';
-  var avatar = data.avatar_url || localStorage.getItem('wx_avatar') || '';
-  document.getElementById('userNick').textContent = nickname;
-  if(avatar){
-    const av = document.getElementById('userAvatar');
-    av.innerHTML = `<img src="${avatar}" alt="avatar">`;
-  }
-  const subEl = document.getElementById('userSub');
-  if(data.subscribed){
-    subEl.textContent = '✅ ' + (data.plan_name||'已开通');
-    subEl.className = 'sub active';
-  }else{
-    subEl.textContent = '未开通 · 👇选择套餐开通';
-    subEl.className = 'sub';
-  }
-}
-
-function syncWechatInfo(){
-  const btn = document.getElementById('syncBtn');
-  btn.classList.add('spinning');
-  // 使用主站统一 OAuth 重授权（snsapi_userinfo 获取真实头像）
-  var target = encodeURIComponent('/xkx/');
-  location.href = 'https://hai.pangoozn.com/api/auth/wechat-redirect?target=' + target + '&scope=snsapi_userinfo';
-}
-
-if(openid && !mySub){
-  fetch(`api/me?openid=${openid}`).then(r=>r.json()).then(data=>{
-    mySub = data;
-    showUserBar(data);
-    if(data.subscribed){ showStatus(data); }
-    setTimeout(()=>{
-      fetch(`api/me/wechat-follow?openid=${openid}`).then(r=>r.json()).then(d=>{
-        if(!d.followed && !d.fallback){ showFollowModal(); }
-      }).catch(()=>{});
-    },1500);
-    if(data.avatar_url){ localStorage.setItem('wx_avatar', data.avatar_url); }
-  }).catch(()=>{
-    document.getElementById('userBar').classList.add('show');
-    document.getElementById('userNick').textContent = '微信用户';
-    document.getElementById('userSub').textContent = '未开通 · 查看下方套餐';
-  });
-}
-
-function showStatus(data){
-  document.getElementById('statusPanel').classList.add('show');
-  document.getElementById('stPlan').textContent = data.plan_name || '基础版';
-  document.getElementById('stUsed').textContent = `${data.messages_used}/${data.messages_limit}`;
-  const days = data.days_left || 0;
-  const daysEl = document.getElementById('stDays');
-  const daysItem = document.getElementById('stDaysItem');
-  daysEl.textContent = days;
-  if(days <= 7){ daysItem.className = 'stat-item danger'; }
-  else if(days <= 15){ daysItem.className = 'stat-item warn'; }
-}
-
-function switchTier(tier){
-  currentTier = tier;
-  document.querySelectorAll('.tier-tab').forEach((t,i)=>t.classList.toggle('active',i===tier));
-  renderPlans();
-  selectedPlanId = null;
-  const payBtn = document.getElementById('payBtn');
-  const note = document.querySelector('.cta-section .note');
-  if(tier === 2){
-    document.getElementById('pickedName').textContent = '💎 PRO专属定制 · ¥880/年 · 定金¥200';
-    payBtn.textContent = '📱 微信咨询开通';
-    payBtn.style.background = 'linear-gradient(135deg,#C8A951,#D4AF37)';
-    payBtn.style.color = '#1a1a2e';
-    payBtn.style.pointerEvents = 'auto';
-    payBtn.style.opacity = '1';
-    payBtn.onclick = showProModal;
-    if(note) note.textContent = '一对一沟通需求 · 企业级专属服务';
-  }else{
-    document.getElementById('pickedName').textContent = '请先点击上方套餐';
-    payBtn.textContent = '微信支付开通';
-    payBtn.style.background = 'linear-gradient(135deg,#C0392B,#A93226)';
-    payBtn.style.color = '#fff';
-    payBtn.style.pointerEvents = 'none';
-    payBtn.style.opacity = '.5';
-    payBtn.onclick = doPay;
-    if(note) note.textContent = '支付即同意服务条款 · 可随时取消';
-  }
-}
-
-function renderPlans(){
-  const grid = document.getElementById('pkgGrid');
-  
-  if(currentTier === 2){
-    grid.innerHTML = `
-    <div class="pro-card">
-      <div class="pro-badge">EXCLUSIVE</div>
-      <div class="pro-title">专属定制AI秘书</div>
-      <div class="pro-price">¥880<small>/年</small></div>
-      <div style="color:#C8A951;font-size:13px;font-weight:600;margin-top:2px">⚠️ 不含算力API费用</div>
-      <div style="color:#C8A951;font-size:13px;font-weight:600;margin-bottom:12px">💰 定金 ¥200 · 尾款 ¥680</div>
-      <div class="pro-features">
-        <span class="pro-feat">🖥️ 专属服务器</span>
-        <span class="pro-feat">⚙️ 安装配置</span>
-        <span class="pro-feat">🎓 在线培训</span>
-        <span class="pro-feat">🛠️ 技术支持</span>
-        <span class="pro-feat">📁 无限文件管理</span>
-        <span class="pro-feat">👨‍💼 1对1专属服务</span>
-      </div>
-      <button class="pro-cta" onclick="showProModal()">💳 支付定金 ¥200</button>
-    </div>`;
-    return;
-  }
-  
-  const targetMsgs = currentTier===0 ? 500 : 2000;
-  const tierPlans = allPlans.filter(p => p.monthly_messages === targetMsgs);
-
-  if(!tierPlans.length){
-    grid.innerHTML = '<div class="loading">暂无套餐，请刷新</div>';
-    return;
-  }
-
-  tierPlans.sort((a,b) => a.months - b.months);
-
-  const labels = {1:'月卡', 3:'季卡', 12:'年卡'};
-  const tags = {1:'', 3:'推荐', 12:'最值'};
-  const baseSavings = currentTier===0 ? {3:'省¥5', 12:'省¥40'} : {3:'省¥10', 12:'省¥71'};
-
-  grid.innerHTML = tierPlans.map((p,i)=>{
-    const m = p.months;
-    return `
-    <div class="pkg-card" onclick="selectPlan(${p.id},this)" data-id="${p.id}">
-      ${tags[m]?`<span class="tag">${tags[m]}</span>`:''}
-      ${p.discount_label?`<span class="discount-tag" style="display:none">${p.discount_label}</span>`:''}
-      <div class="name">${labels[m]||m+'月'}</div>
-      <div class="price">¥${p.price_yuan}<small>/${m===1?'月':m===3?'季':'年'}</small></div>
-      ${baseSavings[m]?`<div class="saving">${baseSavings[m]}</div>`:''}
-      <div class="quota">${p.messages_label}</div>
-    </div>`;
-  }).join('');
-
-  const cards = grid.querySelectorAll('.pkg-card');
-  if(cards.length) selectPlan(tierPlans[tierPlans.length-1].id, cards[cards.length-1]);
-}
-
-function selectPlan(id, el){
-  selectedPlanId = id;
-  document.querySelectorAll('.pkg-card').forEach(c=>c.classList.remove('selected'));
-  el.classList.add('selected');
-  const p = allPlans.find(x=>x.id===id);
-  if(p){
-    const dur = p.months===1?'月卡':p.months===3?'季卡':'年卡';
-    document.getElementById('pickedName').textContent = `${p.name} · ¥${p.price_yuan}/${dur} · ${p.messages_label}`;
-  }
-  const btn = document.getElementById('payBtn');
-  btn.style.pointerEvents = 'auto'; btn.style.opacity = '1';
-}
-
-async function doPay(){
-  if(!selectedPlanId){showToast('请先选择套餐');return}
-  if(!isWechat()){document.getElementById('qrModal').classList.add('show');return}
-
-  const openid = localStorage.getItem('wx_openid') || '';
-  if(!openid){location.href='https://hai.pangoozn.com/api/auth/wechat-redirect?target=' + encodeURIComponent('/xkx/');return}
-
-  const btn = document.getElementById('payBtn');
-  btn.textContent = '正在拉起支付…';
-  btn.style.pointerEvents = 'none'; btn.style.opacity = '.7';
-
-  try{
-    const resp = await fetch('api/pay/create',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({plan_id:selectedPlanId, openid, nickname:mySub?.nickname||''})
-    });
-    const data = await resp.json();
-    if(data.ok && data.jsapi){
-      // 等待 wx.config 就绪
-      if(!window._wxReady){
-        await new Promise(function(resolve){
-          var check = setInterval(function(){
-            if(window._wxReady){ clearInterval(check); resolve(); }
-          }, 200);
-          setTimeout(function(){ clearInterval(check); resolve(); }, 5000);
-        });
-      }
-      if(typeof wx !== 'undefined' && wx.chooseWXPay){
-        wx.chooseWXPay({
-          ...data.jsapi,
-          success: function(){ showSuccess(btn); },
-          cancel: function(){ showToast('已取消支付'); restoreBtn(btn); },
-          fail: function(e){ showToast('支付失败: ' + (e.errMsg||'')); restoreBtn(btn); }
-        });
-      }else{
-        // 降级：旧版 WeixinJSBridge
-        if(typeof WeixinJSBridge !== 'undefined'){
-          WeixinJSBridge.invoke('getBrandWCPayRequest', data.jsapi, function(res){
-            if(res.err_msg==='get_brand_wcpay_request:ok') showSuccess(btn);
-            else if(res.err_msg.indexOf('cancel')>=0){ showToast('已取消支付'); restoreBtn(btn); }
-            else{ showToast('支付失败'); restoreBtn(btn); }
-          });
-        }else{ showToast('请在微信中打开'); restoreBtn(btn); }
-      }
-    }else if(data.ok && data.test_mode){
-      showSuccess(btn);
-    }else{ showToast(data.error||'下单失败'); restoreBtn(btn); }
-  }catch(e){ showToast('网络错误'); restoreBtn(btn); }
-}
-
-function restoreBtn(btn){ btn.textContent='微信支付开通'; btn.style.pointerEvents='auto'; btn.style.opacity='1'; }
-
-function showToast(msg){
-  const t=document.getElementById('toast'); if(!t)return;
-  t.textContent=msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),3000);
-}
-
-function showSuccess(btn){
-  btn.textContent='✅ 已开通'; btn.style.background='#27AE60';
-  document.getElementById('pickedName').innerHTML='';
-  const oid = localStorage.getItem('wx_openid');
-  if(oid){
-    fetch(`api/me?openid=${oid}`).then(r=>r.json()).then(d=>{
-      mySub=d; showUserBar(d); if(d.subscribed) showStatus(d);
-    });
-    setTimeout(()=>{
-      fetch(`api/me/wechat-follow?openid=${oid}`).then(r=>r.json()).then(d=>{
-        if(!d.followed && !d.fallback){ showFollowModal(); }
-      }).catch(()=>{});
-    },1500);
-  }
-}
-
-function showFollowModal(){ /* no-op: forced follow removed */ }
-function closeFollowModal(){ /* no-op: forced follow removed */ }
-
-function showProModal(){
-  document.getElementById('proStep1').style.display = 'block';
-  document.getElementById('proStep2').style.display = 'none';
-  document.getElementById('proModal').classList.add('show');
-}
-function showProCustomerQR(){
-  document.getElementById('proStep1').style.display = 'none';
-  document.getElementById('proStep2').style.display = 'block';
-}
-function closeProModal(){
-  document.getElementById('proModal').classList.remove('show');
-}
-</script>
-<!-- 落地页访问统计 -->
-<script>
-(function(){
-  var openid = '';
-  try { openid = localStorage.getItem('wx_openid') || ''; } catch(e) {}
-  var source = new URLSearchParams(location.search).get('source') || document.referrer || '';
-  fetch('api/analytics/visit', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({openid: openid, page: 'landing', source: source.slice(0, 127)})
-  }).catch(function(){});
-})();
 </script>
 </body>
 </html>

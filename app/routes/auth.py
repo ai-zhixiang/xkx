@@ -16,6 +16,7 @@ from fastapi.responses import RedirectResponse
 import secrets as _secrets
 import jwt
 import logging as _logging
+import time
 _logger = _logging.getLogger('weclawd.auth')
 _oauth_sessions: dict = {}
 
@@ -27,6 +28,7 @@ JWT_SECRET = os.getenv('JWT_SECRET', '')
 JWT_EXPIRE_DAYS = 30
 BASE_URL = os.getenv('BASE_URL', 'http://xkx.pangoozn.com')
 
+SMS_MOCK = os.getenv("SMS_MOCK", "true").lower() == "true"
 
 def _make_jwt(openid: str, nickname: str = '', avatar: str = '') -> str:
     import datetime
@@ -390,3 +392,227 @@ async def bot_oauth_redirect(target: str = '/static/bot.html'):
     except Exception as e:
         _logger.error(f'bot-oauth proxy failed: {e}')
     return {'error': 'OAuth 失败'}
+
+# ===== 手机短信验证码 =====
+import random as _sms_rand
+_sms_codes: dict = {}  # phone -> {code: str, expires_at: float}
+
+SMS_ACCESS_KEY_ID = os.getenv('SMS_ACCESS_KEY_ID', '')
+SMS_ACCESS_KEY_SECRET = os.getenv('SMS_ACCESS_KEY_SECRET', '')
+SMS_SIGN_NAME = os.getenv('SMS_SIGN_NAME', '中赢智享教育科技深圳')
+SMS_TEMPLATE_CODE = os.getenv('SMS_TEMPLATE_CODE', 'SMS_506140441')
+
+
+def _send_sms(phone: str, code: str) -> bool:
+    if SMS_MOCK:
+        print(f"[SMS MOCK] 验证码 {code} 发送至 {phone}")
+        return True
+    try:
+        from aliyunsdkcore.client import AcsClient
+        from aliyunsdkdysmsapi.request.v20170525 import SendSmsRequest
+        import json as _json
+        client = AcsClient(SMS_ACCESS_KEY_ID, SMS_ACCESS_KEY_SECRET, 'cn-hangzhou')
+        req = SendSmsRequest.SendSmsRequest()
+        req.set_PhoneNumbers(phone)
+        req.set_SignName(SMS_SIGN_NAME)
+        req.set_TemplateCode(SMS_TEMPLATE_CODE)
+        req.set_TemplateParam(_json.dumps({'code': code}))
+        resp = client.do_action_with_exception(req)
+        resp_data = _json.loads(resp)
+        return resp_data.get('Code') == 'OK'
+    except Exception as e:
+        _logger.warning(f'[SMS] 发送失败: {e}')
+        return False
+
+
+@router.post('/api/auth/send-code')
+async def send_sms_code(data: dict):
+    phone = data.get('phone', '')
+    if not phone or len(phone) != 11:
+        return {'ok': False, 'error': '请输入正确的手机号'}
+    
+    # 生成6位验证码
+    code = ''.join(str(_sms_rand.randrange(0, 10)) for _ in range(6))
+    
+    # 发送短信
+    sent = _send_sms(phone, code)
+    if not sent:
+        return {'ok': False, 'error': '发送失败，请稍后重试'}
+    
+    # 存储验证码（5分钟有效）
+    _sms_codes[phone] = {'code': code, 'expires_at': time.time() + 300}
+    _logger.info(f'[SMS] 验证码已发送至 {phone[:3]}****{phone[-4:]}')
+    return {'ok': True}
+
+
+@router.post('/api/auth/verify-code')
+async def verify_sms_code(data: dict):
+    phone = data.get('phone', '')
+    code = data.get('code', '')
+    openid = data.get('openid', '')
+    
+    if not phone or not code:
+        return {'ok': False, 'error': '参数不完整'}
+    
+    # Mock 模式下万能验证码 666666
+    if SMS_MOCK and code == "666666":
+        _sms_codes.pop(phone, None)
+        return {"ok": True, "is_member": True, "phone": phone}
+    stored = _sms_codes.get(phone)
+    if not stored:
+        return {'ok': False, 'error': '请先获取验证码'}
+    
+    if time.time() > stored['expires_at']:
+        _sms_codes.pop(phone, None)
+        return {'ok': False, 'error': '验证码已过期'}
+    
+    if stored['code'] != code:
+        return {'ok': False, 'error': '验证码错误'}
+    
+    # 验证成功，清除验证码
+    _sms_codes.pop(phone, None)
+    
+    if openid:
+        # 绑定手机号到 openid
+        try:
+            import asyncpg
+            dsn = os.getenv('DATABASE_URL', 'postgresql://lucky:lucky_pass@localhost/weclawd')
+            dsn = dsn.replace('postgresql+asyncpg://', 'postgresql://')
+            conn = await asyncpg.connect(dsn, timeout=5)
+            try:
+                await conn.execute(
+                    'UPDATE subscribers SET phone = $1, updated_at = NOW() WHERE openid = ',
+                    phone, openid
+                )
+                # 如果没有记录则插入
+                if conn.status == '' or True:
+                    existing = await conn.fetchrow('SELECT id FROM subscribers WHERE openid = $1', openid)
+                    if not existing:
+                        await conn.execute(
+                            'INSERT INTO subscribers (openid, phone, status, started_at, expires_at, messages_used, messages_limit) '
+                            'VALUES ($1, $2, $3, CURRENT_DATE, CURRENT_DATE, 0, 0)',
+                            openid, phone, 'visitor'
+                        )
+            finally:
+                await conn.close()
+        except Exception as e:
+            _logger.warning(f'[SMS] 绑定手机失败: {e}')
+    
+    return {'ok': True}
+
+# ===== 二次绑定 API =====
+
+@router.post('/api/auth/rebind/check')
+async def rebind_check(data: dict):
+    """检查 openid 是否为会员，返回会员手机号（脱敏）"""
+    openid = data.get('openid', '')
+    if not openid:
+        return {'ok': False, 'error': '缺少 openid'}
+
+    try:
+        import asyncpg
+        dsn = os.getenv('DATABASE_URL', 'postgresql://lucky:lucky_pass@localhost/weclawd')
+        dsn = dsn.replace('postgresql+asyncpg://', 'postgresql://')
+        conn = await asyncpg.connect(dsn, timeout=5)
+        try:
+            row = await conn.fetchrow(
+                "SELECT id, phone, status, expires_at FROM subscribers WHERE openid = $1",
+                openid
+            )
+            if not row:
+                return {'ok': False, 'is_member': False, 'error': '未找到用户'}
+
+            import datetime
+            today = datetime.date.today()
+            is_member = (
+                str(row['status']).lower() in ('active', 'trial')
+                and row['expires_at'] and row['expires_at'] >= today
+            )
+            phone = row['phone'] or ''
+            # 脱敏
+            phone_masked = phone[:3] + '****' + phone[-4:] if len(phone) == 11 else ''
+            return {
+                'ok': True,
+                'is_member': is_member,
+                'phone': phone,
+                'phone_masked': phone_masked,
+                'status': row['status'],
+                'expires_at': str(row['expires_at']) if row['expires_at'] else '',
+            }
+        finally:
+            await conn.close()
+    except Exception as e:
+        return {'ok': False, 'error': str(e)}
+
+
+
+@router.post('/api/auth/rebind/verify')
+async def rebind_verify(data: dict):
+    """验证手机验证码，确认会员身份后返回可绑定状态"""
+    phone = data.get('phone', '')
+    code = data.get('code', '')
+    openid = data.get('openid', '')
+
+    if not phone or not code:
+        return {'ok': False, 'error': '参数不完整'}
+    if not openid:
+        return {'ok': False, 'error': '缺少 openid'}
+
+    # 验证码检查
+    if SMS_MOCK and code == "666666":
+        # Mock 模式，跳过所有验证码检查
+        pass
+    else:
+        stored = _sms_codes.get(phone)
+        if not stored:
+            return {'ok': False, 'error': '请先获取验证码'}
+        if time.time() > stored['expires_at']:
+            _sms_codes.pop(phone, None)
+            return {'ok': False, 'error': '验证码已过期'}
+        if stored['code'] != code:
+            return {'ok': False, 'error': '验证码错误'}
+        _sms_codes.pop(phone, None)
+
+    # 检查会员状态（通过 openid 或 phone）
+    try:
+        import asyncpg
+        import datetime
+        dsn = os.getenv('DATABASE_URL', 'postgresql://lucky:lucky_pass@localhost/weclawd')
+        dsn = dsn.replace('postgresql+asyncpg://', 'postgresql://')
+        conn = await asyncpg.connect(dsn, timeout=5)
+        try:
+            today = datetime.date.today()
+            # 先通过 openid 查
+            row = await conn.fetchrow(
+                "SELECT id, status, expires_at FROM subscribers WHERE openid = $1",
+                openid
+            )
+            if row and str(row['status']).lower() in ('active', 'trial') and row['expires_at'] and row['expires_at'] >= today:
+                # 保存手机号
+                await conn.execute(
+                    "UPDATE subscribers SET phone = $1, updated_at = NOW() WHERE openid = $2",
+                    phone, openid
+                )
+                return {'ok': True, 'is_member': True, 'message': '身份验证通过'}
+
+            # 再通过手机号查
+            row = await conn.fetchrow(
+                "SELECT id, status, expires_at FROM subscribers WHERE phone = $1",
+                phone
+            )
+            if row and str(row['status']).lower() in ('active', 'trial') and row['expires_at'] and row['expires_at'] >= today:
+                # 更新 openid
+                if row['openid'] != openid:
+                    await conn.execute(
+                        "UPDATE subscribers SET openid = $1, updated_at = NOW() WHERE phone = $2",
+                        openid, phone
+                    )
+                return {'ok': True, 'is_member': True, 'message': '身份验证通过'}
+
+            return {'ok': False, 'error': '未找到有效会员，请先开通'}
+        finally:
+            await conn.close()
+    except Exception as e:
+        return {'ok': False, 'error': str(e)}
+
+
