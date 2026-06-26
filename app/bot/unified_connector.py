@@ -459,6 +459,31 @@ async def send_msg(
     return await _ilink_post("ilink/bot/msg/sendmsg", payload, token, timeout_ms=15000)
 
 
+async def _send_welcome_here(bot, to_user: str):
+    """发送欢迎消息（不带会员检查的简化版）"""
+    welcome_msg = (
+        "\U0001f99e **欢迎来到享客虾！**\n\n"
+        "我是你的 AI 创作伙伴，可以：\n"
+        "\u2022 \U0001f4ac 自由聊天、提问、咨询\n"
+        "\u2022 \U0001f3b5 AI 写歌、做嗨卡\n"
+        "\u2022 \U0001f4ca 四市量化信号\n\n"
+        "\U0001f381 今日免费剩余：**50** 条\n"
+        "\U0001f449 **开通会员不限量**\u2192 https://ai.pangoozn.com/xkx/\n\n"
+        "试试发暗号\"天王盖地虎\" \U0001f99e"
+    )
+    for i in range(3):
+        try:
+            r = await send_msg(bot.token, to_user, welcome_msg, "", bot=bot)
+            if r and r.get("errcode", 0) == 0:
+                bot.log.info(f"\U0001f389 欢迎消息已推送 {to_user[:20]}")
+                return
+            bot.log.warning(f"  欢迎推送 ret={i+1}: {r}")
+        except Exception as e:
+            bot.log.warning(f"  欢迎推送异常 ret={i+1}: {e}")
+        await asyncio.sleep(1)
+    bot.log.error("欢迎推送失败 3次重试")
+
+
 async def _upload_and_build_item_real(
     path: str, rawsize: int, rawfilemd5: str
 ) -> Optional[dict]:
@@ -621,22 +646,9 @@ async def _process_message(msg: dict, bot: BotSession, client: httpx.AsyncClient
     if not from_user:
         return
 
-    # ── 新用户欢迎：首次发消息时主动推送 ──
+    # ── 新用户欢迎：首次联系时主动推送 ──
     if from_user not in bot.welcomed_users:
-        welcome_msg = (
-            "🦞 **欢迎来到享客虾！**\n\n"
-            "我是你的 AI 创作伙伴，可以：\n"
-            "• 💬 自由聊天、提问、咨询\n"
-            "• 🔍 联网搜索信息\n"
-            "• 📄 生成文档、报告\n"
-            "• 🎵 AI 写歌、做嗨卡\n"
-            "• 📊 四市量化信号\n\n"
-            "🎁 你当前有 **50 条免费对话**，用完即止。\n"
-            "👉 **开通会员享不限量**：https://ai.pangoozn.com/xkx/\n\n"
-            "试试给我发个暗号：\"天王盖地虎\" 🦞"
-        )
-        ctx = msg.get("context_token", "") or ""
-        asyncio.create_task(_send_welcome_and_mark(bot, from_user, welcome_msg, ctx))
+        asyncio.create_task(_send_welcome_here(bot, from_user))
         bot.welcomed_users.add(from_user)
 
     # context_token
@@ -951,20 +963,28 @@ async def main():
 
     await shutdown.wait()
 
+    root_log.info("正在停止 Bot 轮询（取消任务）...")
+    all_tasks = list(running_tasks.values()) + [sync_task]
+    for t in all_tasks:
+        t.cancel()
+    await asyncio.gather(*all_tasks, return_exceptions=True)
+
+    root_log.info("正在通知 iLink 停止...")
     for bot_id, task in list(running_tasks.items()):
         token = bot_tokens.get(bot_id, "")
         if token:
             try:
                 await notify_stop(token)
                 root_log.info("  %s notifyStop ✓", bot_id[:20])
-            except Exception:
-                pass
-        task.cancel()
+            except Exception as e:
+                root_log.warning("  %s notifyStop 失败: %s", bot_id[:20], e)
 
-    sync_task.cancel()
-    all_tasks = list(running_tasks.values()) + [sync_task]
-    if all_tasks:
-        await asyncio.gather(*all_tasks, return_exceptions=True)
+    # 标记干净关闭，下次启动跳过冗余 notifyStop
+    try:
+        Path(STATE_DIR / "clean_shutdown").touch()
+    except Exception:
+        pass
+
     root_log.info("统一连接器已停止")
 
 
