@@ -199,13 +199,30 @@ async def create_order(data: CreateOrderRequest, db: AsyncSession = Depends(get_
                 cb_row = cb.fetchone()
                 if cb_row:
                     remain = (sub.expires_at - date.today()).days if sub.expires_at else 30
+                    # 从 DB 取真实昵称
+                    real_nick = data.nickname or sub.nickname or ""
+                    if not real_nick:
+                        try:
+                            cb_name = await db.execute(
+                                sa_text("SELECT nickname FROM channel_bindings WHERE channel_user_id LIKE :oid LIMIT 1"),
+                                {"oid": data.openid + "%"}
+                            )
+                            nr = cb_name.fetchone()
+                            if nr and nr[0]:
+                                real_nick = nr[0]
+                        except:
+                            pass
+                    if not real_nick:
+                        real_nick = f"虾客{data.openid[-4:]}"
+                    pts = sub.xiake_points or 0
                     await _hc.post("http://127.0.0.1:9100/api/subscription-confirmed", json={
                         "bot_id": cb_row[0],
                         "to_user": cb_row[1],
-                        "nickname": data.nickname or "虾友",
+                        "nickname": real_nick,
                         "plan_name": plan.name,
                         "remain_days": remain,
                         "expires_at": str(sub.expires_at) if sub.expires_at else "",
+                        "xiake_points": pts,
                     })
                     logger.info(f"[支付→Bot] 已通知 {data.openid[:12]}...")
                 else:
