@@ -26,6 +26,7 @@ from app.routes.generate import router as generate_router
 from app.routes.documents import router as documents_router
 from app.routes.analytics import router as analytics_router
 from app.routes.bot_gateway import router as bot_gateway_router
+from app.routes.resources import router as resources_router
 from app.scheduler import start_scheduler
 from app.bot.qqbot import run_qq_bot
 
@@ -78,6 +79,7 @@ app.include_router(generate_router)
 app.include_router(documents_router, prefix='/api')
 app.include_router(analytics_router, prefix='/api/analytics')
 app.include_router(bot_gateway_router)  # 前缀已在 router 中定义
+app.include_router(resources_router)
 app.mount('/static', StaticFiles(directory='app/static'), name='static')
 app.mount('/agents', StaticFiles(directory='/home/ubuntu/weclaw-1/agents'), name='agents')  # v0.5.0: 用户文件服务
 
@@ -164,6 +166,8 @@ async def subscribe_page(openid: str = '', nickname: str = '', plan: str = ''):
     current_plan_name = ""
     current_expires_at = ""
     is_member = False
+    xiake_points = 0
+    points_expires_at = ""
     if openid:
         try:
             from app.models import AsyncSessionLocal
@@ -171,13 +175,17 @@ async def subscribe_page(openid: str = '', nickname: str = '', plan: str = ''):
             from datetime import date
             async with AsyncSessionLocal() as db:
                 r = await db.execute(
-                    sa_text("SELECT p.name as plan_name, s.expires_at FROM subscribers s LEFT JOIN plans p ON s.plan_id = p.id WHERE s.openid LIKE :oid AND s.status = 'ACTIVE' ORDER BY s.id DESC LIMIT 1"),
+                    sa_text("SELECT p.name as plan_name, s.expires_at, s.xiake_points, s.points_expires_at "
+                            "FROM subscribers s LEFT JOIN plans p ON s.plan_id = p.id "
+                            "WHERE s.openid LIKE :oid AND s.status = 'ACTIVE' ORDER BY s.id DESC LIMIT 1"),
                     {"oid": openid + "%"}
                 )
                 row = r.fetchone()
                 if row and row[1] and row[1] >= date.today():
                     current_plan_name = row[0] or ""
                     current_expires_at = str(row[1])
+                    xiake_points = row[2] or 0
+                    points_expires_at = str(row[3]) if row[3] else ""
                     is_member = True
         except:
             pass
@@ -189,6 +197,8 @@ async def subscribe_page(openid: str = '', nickname: str = '', plan: str = ''):
         "current_plan_name": current_plan_name,
         "current_expires_at": current_expires_at,
         "is_member": is_member,
+        "xiake_points": xiake_points,
+        "points_expires_at": points_expires_at,
     }
     import json
     inject = f'<script>window.__SUBSCRIBE_DATA = {json.dumps(data, ensure_ascii=False)};</script>'

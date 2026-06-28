@@ -133,6 +133,26 @@ body {
       <div class="item">专属 Bot</div>
     </div>
 
+    <!-- Resource usage display (for members) -->
+    <div id="resourcePanel" style="display:none; background:rgba(255,255,255,0.03); border-radius:12px; padding:14px 16px; margin:12px 0;">
+      <div style="font-size:12px; color:#887a70; margin-bottom:8px;">🦞 资源概览</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:80px; background:rgba(255,255,255,0.04); border-radius:8px; padding:10px; text-align:center;">
+          <div style="font-size:20px; font-weight:700; color:#d4a847;" id="resPoints">0</div>
+          <div style="font-size:10px; color:#6a6058; margin-top:2px;">虾点剩余</div>
+        </div>
+        <div style="flex:1; min-width:80px; background:rgba(255,255,255,0.04); border-radius:8px; padding:10px; text-align:center;">
+          <div style="font-size:20px; font-weight:700; color:#81c784;" id="resDays">0</div>
+          <div style="font-size:10px; color:#6a6058; margin-top:2px;">会员天数</div>
+        </div>
+        <div style="flex:1; min-width:80px; background:rgba(255,255,255,0.04); border-radius:8px; padding:10px; text-align:center;">
+          <div style="font-size:18px; font-weight:700; color:#e8ddd0;" id="resDisk">0</div>
+          <div style="font-size:10px; color:#6a6058; margin-top:2px;">磁盘使用</div>
+        </div>
+      </div>
+      <div style="font-size:11px; color:#5a5048; margin-top:8px;" id="resPointsHint"></div>
+    </div>
+
     <div id="status" class="status"></div>
     <button id="btnOpen" class="btn-primary" onclick="onSubscribe()">🚀 续费享客虾</button>
     <div class="footer">享客虾 · AI 创作伙伴</div>
@@ -209,6 +229,36 @@ function updateExpiry() {
     document.getElementById('currentExpiry').textContent = '当前到期：' + currentExpires;
     document.getElementById('memberBanner').style.display = 'block';
     document.getElementById('btnOpen').textContent = '🚀 续费享客虾';
+
+    // 显示资源概览
+    var pts = sd.xiake_points || 0;
+    var remDays = 0;
+    if (currentExpires) {
+      var d1 = new Date(currentExpires);
+      var d2 = new Date();
+      remDays = Math.max(0, Math.floor((d1 - d2) / 86400000));
+    }
+    document.getElementById('resPoints').textContent = pts;
+    document.getElementById('resDays').textContent = remDays;
+    document.getElementById('resDisk').textContent = '0M';
+    document.getElementById('resourcePanel').style.display = 'block';
+
+    // 虾点有效期提示
+    if (sd.points_expires_at) {
+      document.getElementById('resPointsHint').textContent = '🦞 虾点有效期至 ' + sd.points_expires_at + '，续费后自动延续';
+    }
+
+    // 异步查用量
+    if (sd.openid) {
+      fetch('/api/resources/usage?openid=' + encodeURIComponent(sd.openid))
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.disk_used_mb) document.getElementById('resDisk').textContent = d.disk_used_mb + 'M';
+          if (d.points_balance !== undefined) {
+            document.getElementById('resPoints').textContent = d.points_balance;
+          }
+        }).catch(function() {});
+    }
   } else {
     document.getElementById('pageTitle').textContent = '享客虾 · 开通';
     document.getElementById('pageSubtitle').textContent = '开通会员，解锁全部 AI 能力';

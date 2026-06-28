@@ -103,11 +103,16 @@ async def create_order(data: CreateOrderRequest, db: AsyncSession = Depends(get_
             expires_at=today + timedelta(days=plan.months * 30),
             messages_limit=plan.monthly_messages,
             last_reset_at=today,
+            xiake_points=plan.months * 3000,  # 每月 3000 虾点
         )
     else:
         sub.plan_id = plan.id
         sub.messages_limit = plan.monthly_messages
         sub.messages_used = 0
+        # 续费：叠加虾点（上限不要超过配额 2 倍）
+        monthly_points = plan.months * 3000
+        max_points = monthly_points * 2
+        sub.xiake_points = min((sub.xiake_points or 0) + monthly_points, max_points)
         old_expires = sub.expires_at if sub.expires_at and sub.expires_at > today else today
         sub.expires_at = old_expires + timedelta(days=plan.months * 30)
 
