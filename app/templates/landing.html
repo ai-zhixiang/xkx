@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<base href="/xkx/">
+<title>🦞 享客虾 · AI 创作伙伴</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:system-ui,'PingFang SC','Microsoft YaHei',sans-serif;
+  background:linear-gradient(180deg,#F8F6F2 0%,#FFF 40%,#FFF 100%);
+  color:#2C2C2C;min-height:100vh;line-height:1.6;
+  -webkit-font-smoothing:antialiased
+}
+.container{max-width:420px;margin:0 auto;padding:20px 20px 40px}
+
+/* Hero */
+.hero{text-align:center;padding:32px 0 8px}
+.hero .logo-wrap{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:80px;height:80px;border-radius:50%;
+  background:linear-gradient(135deg,#C0392B,#A93226);
+  box-shadow:0 4px 20px rgba(192,57,43,.25);margin-bottom:8px
+}
+.hero .logo-wrap .emoji{font-size:42px;line-height:1}
+.hero h1{font-size:28px;font-weight:800;color:#1a1a1a;margin-top:8px;letter-spacing:1px}
+.hero .tagline{
+  font-size:14px;color:#C0392B;margin-top:4px;font-weight:500;
+  background:rgba(192,57,43,.06);display:inline-block;padding:3px 16px;border-radius:20px
+}
+
+/* Features */
+.features{display:flex;flex-direction:column;gap:10px;margin:24px 0 28px}
+.feature{
+  display:flex;align-items:center;gap:14px;
+  background:#fff;border-radius:14px;padding:16px 18px;
+  border:1px solid rgba(192,57,43,.05);box-shadow:0 1px 8px rgba(0,0,0,.02)
+}
+.feature .ficon{font-size:26px;width:40px;text-align:center}
+.feature .ftext{flex:1}
+.feature .ftext strong{display:block;font-size:15px;color:#1a1a1a;font-weight:600}
+.feature .ftext span{font-size:13px;color:#999}
+
+/* CTA */
+.cta-section{text-align:center;margin:8px 0 16px}
+.btn-primary{
+  display:block;width:100%;padding:16px;border-radius:14px;border:none;
+  background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;
+  font-size:17px;font-weight:700;cursor:pointer;transition:all .2s;
+  letter-spacing:.5px;box-shadow:0 4px 16px rgba(192,57,43,.3)
+}
+.btn-primary:active{transform:scale(.97);opacity:.9}
+.btn-secondary{
+  display:block;width:100%;padding:13px;border-radius:14px;
+  border:1.5px solid #e8e0d8;background:#fff;color:#888;
+  font-size:14px;cursor:pointer;margin-top:10px;transition:all .15s
+}
+.btn-secondary:active{background:#f8f6f2}
+.cta-hint{font-size:12px;color:#bbb;margin-top:10px;line-height:1.6}
+
+/* Pricing */
+.pricing{background:#fff;border-radius:14px;padding:18px 16px;margin:8px 0;border:1px solid #f0ebe4}
+.pricing h3{font-size:13px;color:#888;margin-bottom:12px;font-weight:600}
+.price-row{display:flex;gap:10px}
+.price-item{flex:1;text-align:center;padding:12px 8px;border-radius:10px;background:#FDF8F6}
+.price-item .amt{font-size:24px;font-weight:800;color:#C0392B}
+.price-item .amt small{font-size:13px;color:#888;font-weight:400}
+.price-item .per{font-size:12px;color:#999;margin-top:2px}
+.price-item.highlight{border:1px solid rgba(192,57,43,.15);background:#fff5f2}
+.price-item .save{font-size:10px;color:#27AE60;font-weight:600;margin-top:2px}
+
+/* QR for non-WeChat */
+.qr-section{display:none;text-align:center;margin-top:20px;padding:24px 16px;background:#fff;border-radius:14px;border:1px solid #f0ebe4}
+.qr-section.show{display:block}
+.qr-section img{width:170px;height:170px;border-radius:10px;margin:8px auto}
+.qr-section .hint{font-size:13px;color:#888;line-height:1.7}
+
+/* Footer */
+.footer{text-align:center;padding:28px 0 8px;font-size:11px;color:#ccc}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="hero">
+    <div class="logo-wrap"><span class="emoji">🦞</span></div>
+    <h1>享客虾</h1>
+    <div class="tagline">AI · 创作伙伴</div>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <div class="ficon">🎵</div>
+      <div class="ftext">
+        <strong>AI 写歌</strong>
+        <span>说句话，AI 为你写一首原创歌曲</span>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="ficon">🎬</div>
+      <div class="ftext">
+        <strong>照片 MV</strong>
+        <span>传照片 → 识图配诗 → 配乐 → 出片</span>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="ficon">🎤</div>
+      <div class="ftext">
+        <strong>声音克隆</strong>
+        <span>用你的声音唱任何歌</span>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="ficon">🦞</div>
+      <div class="ftext">
+        <strong>AI 对话</strong>
+        <span>懂音乐的创作伙伴，无所不聊</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta-section" id="wechatCTA">
+    <button class="btn-primary" onclick="startBind()">📱 添加享客虾 Bot</button>
+    <div class="cta-hint">在微信中使用 · AI 创作伙伴</div>
+  </div>
+
+  <div class="pricing">
+    <h3>会员方案</h3>
+    <div class="price-row">
+      <div class="price-item">
+        <div class="amt">¥9.9 <small>/月</small></div>
+        <div class="per">无限创作</div>
+      </div>
+      <div class="price-item highlight">
+        <div class="amt">¥99 <small>/年</small></div>
+        <div class="per">省 ¥19.8</div>
+        <div class="save">🔥 特惠</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="qr-section" id="qrSection">
+    <p style="font-size:14px;color:#888;margin-bottom:8px">扫码添加享客虾 Bot</p>
+    <img id="qrImg" src="" alt="二维码">
+    <div class="hint">微信扫一扫 · 立即体验</div>
+  </div>
+
+  <div class="footer">
+    <span>🦞 享客虾 · AI 传薪计划 · 智享家出品</span>
+  </div>
+</div>
+
+<script>
+// UA 检测：微信内 vs 外部
+(function(){
+  var isWx = /MicroMessenger/i.test(navigator.userAgent);
+  if (!isWx) {
+    document.getElementById('wechatCTA').style.display = 'none';
+    document.getElementById('qrSection').classList.add('show');
+    document.getElementById('qrImg').src = '/api/bot/qrcode/image?' + Date.now();
+  }
+})();
+
+function startBind() {
+  // 微信内 → OAuth → 绑定页
+  var cb = encodeURIComponent(window.location.origin + '/xkx/bind');
+  window.location.href = 'https://ai.pangoozn.com/api/auth-center/api/auth/wechat-redirect?direct=1&target=' + cb + '&source=xkx';
+}
+</script>
+</body>
+</html>

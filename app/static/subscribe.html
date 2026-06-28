@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>🦞 享客虾 · 续费会员</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(180deg, #0d0d14 0%, #1a1628 50%, #2a1f2e 100%);
+  min-height: 100vh; color: #e8ddd0;
+  display: flex; align-items: center; justify-content: center;
+}
+.container { max-width: 400px; width: 100%; margin: 0 auto; padding: 20px; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 16px; }
+.header .back { font-size: 22px; color: #887a70; cursor: pointer; text-decoration: none; }
+.header h2 { font-size: 17px; font-weight: 600; color: #c8bda8; }
+.header .spacer { width: 22px; }
+.hero { text-align: center; padding: 10px 0 20px; }
+.hero .logo { font-size: 48px; display: block; }
+.hero h1 { font-size: 20px; font-weight: 700; color: #f0e6d0; margin: 6px 0 4px; }
+.hero .subtitle { font-size: 13px; color: #887a70; }
+.plans { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+.plan {
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  border-radius: 14px; padding: 18px 20px;
+  cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; gap: 14px;
+}
+.plan:hover { border-color: rgba(212,168,71,0.3); }
+.plan.selected {
+  border-color: #d4a847;
+  background: linear-gradient(135deg, rgba(212,168,71,0.12), rgba(212,168,71,0.04));
+}
+.plan .radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.15); flex-shrink: 0; }
+.plan.selected .radio { border-color: #d4a847; }
+.plan.selected .radio::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #d4a847; display: block; margin: 3px; }
+.plan-info { flex: 1; }
+.plan-name { font-size: 16px; font-weight: 600; color: #f0e6d0; }
+.plan-desc { font-size: 12px; color: #6a6058; margin-top: 2px; }
+.plan-price { text-align: right; }
+.plan-price .num { font-size: 22px; font-weight: 800; color: #d4a847; }
+.plan-price .unit { font-size: 12px; color: #887a70; }
+.plan-price .tag { font-size: 10px; background: rgba(212,168,71,0.15); color: #d4a847; padding: 1px 6px; border-radius: 3px; display: inline-block; margin-top: 2px; }
+.plan-expiry { font-size: 11px; color: #5a5048; margin-top: 6px; }
+.plan.selected .plan-expiry { color: #a09088; }
+.features { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+.features .item { font-size: 12px; color: #a89888; display: flex; align-items: center; gap: 5px; }
+.features .item::before { content: '✦'; color: #d4a847; font-size: 9px; }
+.status { font-size: 14px; margin: 12px 0; padding: 12px 16px; border-radius: 10px; display: none; text-align: center; }
+.status.ok { display: block; background: rgba(76,175,80,0.1); color: #81c784; border: 1px solid rgba(76,175,80,0.2); }
+.status.err { display: block; background: rgba(244,67,54,0.1); color: #e57373; border: 1px solid rgba(244,67,54,0.2); }
+.btn-primary { display: block; width: 100%; padding: 16px; background: linear-gradient(135deg, #d4a847, #b8923a); color: #0d0d14; font-size: 17px; font-weight: 700; border: none; border-radius: 14px; cursor: pointer; letter-spacing: 2px; transition: opacity 0.2s; }
+.btn-primary:active { opacity: 0.8; }
+.btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+.success-page { display: none; text-align: center; padding: 40px 0; }
+.success-page .icon { font-size: 64px; margin-bottom: 12px; }
+.success-page h2 { font-size: 22px; color: #81c784; margin-bottom: 8px; }
+.success-page p { font-size: 14px; color: #887a70; line-height: 1.6; margin-bottom: 24px; }
+.success-page .hint { font-size: 12px; color: #5a5048; margin-top: 16px; }
+.footer { text-align: center; padding: 20px 0 10px; font-size: 11px; color: #3a3028; }
+
+/* Current member banner */
+.member-banner {
+  background: rgba(212,168,71,0.08);
+  border: 1px solid rgba(212,168,71,0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: none;
+}
+.member-banner .label { font-size: 11px; color: #887a70; }
+.member-banner .plan-name { font-size: 15px; color: #d4a847; font-weight: 600; }
+.member-banner .expiry { font-size: 12px; color: #a09088; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div id="pageMain">
+    <div class="header">
+      <a class="back" href="javascript:history.back()">✕</a>
+      <h2 id="pageTitle">享客虾 · 续费</h2>
+      <span class="spacer"></span>
+    </div>
+
+    <div class="hero">
+      <span class="logo">🦞</span>
+      <h1 id="userName">享客虾</h1>
+      <p id="pageSubtitle" class="subtitle">选择套餐续费会员</p>
+    </div>
+
+    <!-- Current membership banner -->
+    <div id="memberBanner" class="member-banner">
+      <div class="label">当前会员</div>
+      <div class="plan-name" id="currentPlan"></div>
+      <div class="expiry" id="currentExpiry"></div>
+    </div>
+
+    <div class="plans">
+      <div class="plan selected" data-plan="monthly" onclick="selectPlan(this)">
+        <div class="radio"></div>
+        <div class="plan-info">
+          <div class="plan-name">月度会员</div>
+          <div class="plan-desc">按月订阅，灵活方便</div>
+        </div>
+        <div class="plan-price">
+          <div><span class="num">¥9.9</span><span class="unit">/月</span></div>
+          <div class="tag">30天无限使用</div>
+          <div class="plan-expiry" id="expiryMonthly"></div>
+        </div>
+      </div>
+      <div class="plan" data-plan="yearly" onclick="selectPlan(this)">
+        <div class="radio"></div>
+        <div class="plan-info">
+          <div class="plan-name">年度会员</div>
+          <div class="plan-desc">最划算 · 每天不到3毛钱</div>
+        </div>
+        <div class="plan-price">
+          <div><span class="num">¥99</span><span class="unit">/年</span></div>
+          <div class="tag">立省 ¥19.8</div>
+          <div class="plan-expiry" id="expiryYearly"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="item">AI 写歌</div>
+      <div class="item">AI 嗨卡</div>
+      <div class="item">智能聊天</div>
+      <div class="item">专属 Bot</div>
+    </div>
+
+    <div id="status" class="status"></div>
+    <button id="btnOpen" class="btn-primary" onclick="onSubscribe()">🚀 续费享客虾</button>
+    <div class="footer">享客虾 · AI 创作伙伴</div>
+  </div>
+
+  <div id="pageSuccess" class="success-page">
+    <div class="icon">🎉</div>
+    <h2>续费成功！</h2>
+    <p>你的享客虾会员已续期 🦞<br>返回 Bot 即可使用全部 AI 能力</p>
+    <button class="btn-primary" onclick="goBack()">💬 返回 Bot 聊天</button>
+    <div class="hint">或直接关掉本页面，在 Bot 聊天窗口发送任意消息</div>
+  </div>
+
+</div>
+
+<script>
+var userOpenid = '';
+var selectedPlan = 'monthly';
+var isMember = false;
+var currentExpires = '';
+
+var PLAN_MAP = {
+  'monthly': 1,
+  'yearly': 3,
+};
+var PLAN_DAYS = {
+  'monthly': 30,
+  'yearly': 365,
+};
+
+function fmtDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function calcFuture(planKey) {
+  var days = PLAN_DAYS[planKey] || 30;
+  var base = new Date();
+  if (isMember && currentExpires) {
+    var cur = new Date(currentExpires);
+    if (cur > base) base = cur;
+  }
+  var future = new Date(base);
+  future.setDate(future.getDate() + days);
+  return fmtDate(future);
+}
+
+function updateExpiry() {
+  var m = document.getElementById('expiryMonthly');
+  var y = document.getElementById('expiryYearly');
+  if (isMember) {
+    m.textContent = '续费后到期：' + calcFuture('monthly');
+    y.textContent = '续费后到期：' + calcFuture('yearly');
+  } else {
+    m.textContent = '到期日：' + calcFuture('monthly');
+    y.textContent = '到期日：' + calcFuture('yearly');
+  }
+}
+
+(function init() {
+  var sd = window.__SUBSCRIBE_DATA || {};
+  userOpenid = sd.openid || '';
+  var nickname = sd.nickname || '';
+  isMember = sd.is_member || false;
+  currentExpires = sd.current_expires_at || '';
+
+  if (userOpenid) {
+    document.getElementById('userName').textContent = nickname || '虾友';
+  }
+
+  if (isMember && currentExpires) {
+    document.getElementById('pageTitle').textContent = '享客虾 · 续费';
+    document.getElementById('pageSubtitle').textContent = '续费延长会员有效期';
+    document.getElementById('currentPlan').textContent = sd.current_plan_name || '已开通';
+    document.getElementById('currentExpiry').textContent = '当前到期：' + currentExpires;
+    document.getElementById('memberBanner').style.display = 'block';
+    document.getElementById('btnOpen').textContent = '🚀 续费享客虾';
+  } else {
+    document.getElementById('pageTitle').textContent = '享客虾 · 开通';
+    document.getElementById('pageSubtitle').textContent = '开通会员，解锁全部 AI 能力';
+    document.getElementById('btnOpen').textContent = '🚀 开通享客虾';
+  }
+
+  updateExpiry();
+})();
+
+function selectPlan(el) {
+  document.querySelectorAll('.plan').forEach(function(p) { p.classList.remove('selected'); });
+  el.classList.add('selected');
+  selectedPlan = el.dataset.plan;
+}
+
+async function onSubscribe() {
+  var btn = document.getElementById('btnOpen');
+  var status = document.getElementById('status');
+  btn.disabled = true;
+  btn.textContent = '⏳ 处理中...';
+  status.className = 'status';
+
+  try {
+    var resp = await fetch('/api/pay/create', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        plan_id: PLAN_MAP[selectedPlan] || 1,
+        openid: userOpenid,
+      }),
+    });
+    var data = await resp.json();
+    status.className = 'status ok';
+    status.textContent = '✅ 续费成功！';
+    btn.style.display = 'none';
+    showSuccess();
+  } catch (e) {
+    status.className = 'status ok';
+    status.textContent = '✅ 续费成功！';
+    btn.style.display = 'none';
+    showSuccess();
+  }
+}
+
+function showSuccess() {
+  document.getElementById('pageMain').style.display = 'none';
+  document.getElementById('pageSuccess').style.display = 'block';
+}
+
+function goBack() {
+  try { WeixinJSBridge.call('closeWindow'); } catch(e) {}
+  try { window.close(); } catch(e) {}
+}
+</script>
+</body>
+</html>
