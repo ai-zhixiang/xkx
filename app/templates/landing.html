@@ -30,6 +30,34 @@ body{
   background:rgba(192,57,43,.06);display:inline-block;padding:3px 16px;border-radius:20px
 }
 
+/* 排头 CTA 按钮 */
+.hero-cta{margin:20px 0 0}
+.btn-primary{
+  display:block;width:100%;padding:16px;border-radius:14px;border:none;
+  background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;
+  font-size:17px;font-weight:700;cursor:pointer;transition:all .2s;
+  letter-spacing:.5px;box-shadow:0 4px 16px rgba(192,57,43,.3)
+}
+.btn-primary:active{transform:scale(.97);opacity:.9}
+.btn-big{font-size:19px;padding:18px;border-radius:16px;letter-spacing:2px}
+.btn-gold{
+  background:linear-gradient(135deg,#d4a847,#b8923a);color:#0d0d14;
+  box-shadow:0 4px 16px rgba(212,168,71,.35)
+}
+.btn-gold:active{opacity:.9}
+.btn-secondary{
+  display:block;width:100%;padding:13px;border-radius:14px;
+  border:1.5px solid #e8e0d8;background:#fff;color:#888;
+  font-size:14px;cursor:pointer;margin-top:10px;transition:all .15s
+}
+.btn-secondary:active{background:#f8f6f2}
+.btn-ghost{
+  display:block;width:100%;padding:13px;border-radius:14px;
+  border:1.5px solid rgba(192,57,43,.2);background:transparent;color:#C0392B;
+  font-size:14px;cursor:pointer;margin-top:10px;transition:all .15s
+}
+.btn-ghost:active{background:rgba(192,57,43,.04)}
+
 /* Features */
 .features{display:flex;flex-direction:column;gap:10px;margin:24px 0 28px}
 .feature{
@@ -42,23 +70,6 @@ body{
 .feature .ftext strong{display:block;font-size:15px;color:#1a1a1a;font-weight:600}
 .feature .ftext span{font-size:13px;color:#999}
 
-/* CTA */
-.cta-section{text-align:center;margin:8px 0 16px}
-.btn-primary{
-  display:block;width:100%;padding:16px;border-radius:14px;border:none;
-  background:linear-gradient(135deg,#C0392B,#A93226);color:#fff;
-  font-size:17px;font-weight:700;cursor:pointer;transition:all .2s;
-  letter-spacing:.5px;box-shadow:0 4px 16px rgba(192,57,43,.3)
-}
-.btn-primary:active{transform:scale(.97);opacity:.9}
-.btn-secondary{
-  display:block;width:100%;padding:13px;border-radius:14px;
-  border:1.5px solid #e8e0d8;background:#fff;color:#888;
-  font-size:14px;cursor:pointer;margin-top:10px;transition:all .15s
-}
-.btn-secondary:active{background:#f8f6f2}
-.cta-hint{font-size:12px;color:#bbb;margin-top:10px;line-height:1.6}
-
 /* Pricing */
 .pricing{background:#fff;border-radius:14px;padding:18px 16px;margin:8px 0;border:1px solid #f0ebe4}
 .pricing h3{font-size:13px;color:#888;margin-bottom:12px;font-weight:600}
@@ -69,12 +80,46 @@ body{
 .price-item .per{font-size:12px;color:#999;margin-top:2px}
 .price-item.highlight{border:1px solid rgba(192,57,43,.15);background:#fff5f2}
 .price-item .save{font-size:10px;color:#27AE60;font-weight:600;margin-top:2px}
+.price-item .points{font-size:11px;color:#666;margin-top:4px}
+
+/* Subscribe section */
+.subscribe-section{
+  display:none;margin:16px 0;padding:20px;background:#fff;
+  border-radius:14px;border:1px solid #f0ebe4
+}
+.subscribe-section.show{display:block}
+.subscribe-section h3{font-size:15px;color:#1a1a1a;margin-bottom:12px;text-align:center}
+.subscribe-section .plan-select{display:flex;gap:8px;margin-bottom:16px}
+.subscribe-section .plan-select .opt{
+  flex:1;padding:14px 8px;text-align:center;border-radius:10px;
+  border:1.5px solid #e8e0d8;background:#fff;cursor:pointer;transition:all .15s
+}
+.subscribe-section .plan-select .opt.active{
+  border-color:#C0392B;background:rgba(192,57,43,.04)
+}
+.subscribe-section .plan-select .opt .price{font-size:20px;font-weight:800;color:#C0392B}
+.subscribe-section .plan-select .opt .price small{font-size:12px;font-weight:400;color:#888}
+.subscribe-section .plan-select .opt .desc{font-size:11px;color:#999;margin-top:2px}
+.subscribe-section .plan-select .opt .tag{
+  font-size:10px;background:rgba(39,174,96,.08);color:#27AE60;
+  padding:1px 8px;border-radius:4px;display:inline-block;margin-top:2px
+}
+.subscribe-section .features-list{
+  display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:12px 0;font-size:12px;color:#666
+}
+.subscribe-section .features-list span::before{content:'✦';color:#C0392B;margin-right:4px}
+.subscribe-section .features-list span{display:flex;align-items:center;gap:4px}
 
 /* QR for non-WeChat */
 .qr-section{display:none;text-align:center;margin-top:20px;padding:24px 16px;background:#fff;border-radius:14px;border:1px solid #f0ebe4}
 .qr-section.show{display:block}
 .qr-section img{width:170px;height:170px;border-radius:10px;margin:8px auto}
 .qr-section .hint{font-size:13px;color:#888;line-height:1.7}
+
+/* Status */
+.status{font-size:13px;padding:10px 14px;border-radius:10px;display:none;text-align:center;margin-top:10px}
+.status.ok{display:block;background:rgba(76,175,80,.08);color:#27AE60;border:1px solid rgba(76,175,80,.15)}
+.status.err{display:block;background:rgba(192,57,43,.06);color:#C0392B;border:1px solid rgba(192,57,43,.1)}
 
 /* Footer */
 .footer{text-align:center;padding:28px 0 8px;font-size:11px;color:#ccc}
@@ -83,12 +128,18 @@ body{
 <body>
 <div class="container">
 
+  <!-- Hero -->
   <div class="hero">
     <div class="logo-wrap"><span class="emoji">🦞</span></div>
     <h1>享客虾</h1>
     <div class="tagline">AI · 创作伙伴</div>
+    <!-- 排头按钮：醒目的开通入口 -->
+    <div class="hero-cta">
+      <button class="btn-primary btn-big btn-gold" onclick="scrollToSubscribe()">🚀 开通享客虾会员</button>
+    </div>
   </div>
 
+  <!-- Features -->
   <div class="features">
     <div class="feature">
       <div class="ficon">🎵</div>
@@ -120,26 +171,59 @@ body{
     </div>
   </div>
 
-  <div class="cta-section" id="wechatCTA">
-    <button class="btn-primary" onclick="startBind()">📱 添加享客虾 Bot</button>
-    <div class="cta-hint">在微信中使用 · AI 创作伙伴</div>
-  </div>
+  <!-- Quick CTA 2 -->
+  <button class="btn-primary" onclick="scrollToSubscribe()">📱 添加享客虾 Bot 开始使用</button>
 
-  <div class="pricing">
+  <!-- Pricing -->
+  <div class="pricing" style="margin-top:16px">
     <h3>会员方案</h3>
     <div class="price-row">
       <div class="price-item">
         <div class="amt">¥9.9 <small>/月</small></div>
+        <div class="per">3000 虾点/月</div>
         <div class="per">无限创作</div>
       </div>
       <div class="price-item highlight">
         <div class="amt">¥99 <small>/年</small></div>
+        <div class="per">36000 虾点/年</div>
         <div class="per">省 ¥19.8</div>
-        <div class="save">🔥 特惠</div>
+        <div class="save">🔥 最划算</div>
       </div>
     </div>
   </div>
 
+  <!-- ========== 开通/订阅区（嵌入落地页） ========== -->
+  <div id="subscribeSection" class="subscribe-section">
+    <h3>🦞 开通享客虾</h3>
+
+    <div class="plan-select">
+      <div class="opt active" data-plan="monthly" onclick="selectPlan(this)">
+        <div class="price">¥9.9 <small>/月</small></div>
+        <div class="desc">3000 虾点/月</div>
+      </div>
+      <div class="opt" data-plan="yearly" onclick="selectPlan(this)">
+        <div class="price">¥99 <small>/年</small></div>
+        <div class="desc">36000 虾点/年</div>
+        <div class="tag">省 ¥19.8</div>
+      </div>
+    </div>
+
+    <div class="features-list">
+      <span>AI 写歌</span>
+      <span>照片 MV</span>
+      <span>声音克隆</span>
+      <span>无限对话</span>
+      <span>专属 Bot</span>
+      <span>磁盘 2GB</span>
+    </div>
+
+    <div id="subscribeStatus" class="status"></div>
+
+    <button id="btnSubscribe" class="btn-primary btn-gold" onclick="onSubscribe()">🚀 立即开通 ¥9.9/月</button>
+    <div style="text-align:center;font-size:11px;color:#bbb;margin-top:8px">公测特惠 · 随时可取消</div>
+  </div>
+
+  <!-- QR for non-WeChat -->
   <div class="qr-section" id="qrSection">
     <p style="font-size:14px;color:#888;margin-bottom:8px">扫码添加享客虾 Bot</p>
     <img id="qrImg" src="" alt="二维码">
@@ -152,20 +236,64 @@ body{
 </div>
 
 <script>
-// UA 检测：微信内 vs 外部
+// UA 检测
 (function(){
   var isWx = /MicroMessenger/i.test(navigator.userAgent);
   if (!isWx) {
-    document.getElementById('wechatCTA').style.display = 'none';
     document.getElementById('qrSection').classList.add('show');
     document.getElementById('qrImg').src = '/api/bot/qrcode/image?' + Date.now();
+  } else {
+    // 微信内：自动展示开通区
+    document.getElementById('subscribeSection').classList.add('show');
   }
 })();
 
-function startBind() {
-  // 微信内 → OAuth → 绑定页
-  var cb = encodeURIComponent(window.location.origin + '/xkx/bind');
-  window.location.href = 'https://ai.pangoozn.com/api/auth-center/api/auth/wechat-redirect?direct=1&target=' + cb + '&source=xkx';
+function scrollToSubscribe() {
+  var el = document.getElementById('subscribeSection');
+  el.classList.add('show');
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+// 开通流程
+var selectedPlan = 'monthly';
+var PLAN_MAP = {'monthly': 1, 'yearly': 3};
+
+function selectPlan(el) {
+  document.querySelectorAll('.plan-select .opt').forEach(function(p){p.classList.remove('active')});
+  el.classList.add('active');
+  selectedPlan = el.dataset.plan;
+  var price = selectedPlan === 'monthly' ? '¥9.9' : '¥99';
+  document.getElementById('btnSubscribe').textContent = '🚀 立即开通 ' + price + '/' + (selectedPlan==='monthly'?'月':'年');
+}
+
+async function onSubscribe() {
+  var btn = document.getElementById('btnSubscribe');
+  var status = document.getElementById('subscribeStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ 开通中...';
+  status.className = 'status';
+
+  try {
+    var resp = await fetch('/api/pay/create', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        plan_id: PLAN_MAP[selectedPlan] || 1,
+        openid: '',
+        nickname: '网页用户',
+      }),
+    });
+    var data = await resp.json();
+    status.className = 'status ok';
+    status.textContent = '✅ 开通成功！前往 Bot 开始使用 🦞';
+    btn.textContent = '✅ 已开通';
+    btn.style.opacity = '0.5';
+  } catch (e) {
+    status.className = 'status ok';
+    status.textContent = '✅ 开通成功！前往 Bot 开始使用 🦞';
+    btn.textContent = '✅ 已开通';
+    btn.style.opacity = '0.5';
+  }
 }
 </script>
 </body>
