@@ -13,10 +13,6 @@ body {
   display: flex; align-items: center; justify-content: center;
 }
 .container { max-width: 400px; width: 100%; margin: 0 auto; padding: 20px; }
-.header { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 16px; }
-.header .back { font-size: 22px; color: #887a70; cursor: pointer; text-decoration: none; }
-.header h2 { font-size: 17px; font-weight: 600; color: #c8bda8; }
-.header .spacer { width: 22px; }
 .hero { text-align: center; padding: 10px 0 20px; }
 .hero .logo { font-size: 48px; display: block; }
 .hero h1 { font-size: 20px; font-weight: 700; color: #f0e6d0; margin: 6px 0 4px; }
@@ -80,12 +76,6 @@ body {
 <div class="container">
 
   <div id="pageMain">
-    <div class="header">
-      <a class="back" href="javascript:history.back()">✕</a>
-      <h2 id="pageTitle">享客虾 · 续费</h2>
-      <span class="spacer"></span>
-    </div>
-
     <div class="hero">
       <span class="logo">🦞</span>
       <h1 id="userName">享客虾</h1>
@@ -223,7 +213,6 @@ function updateExpiry() {
   }
 
   if (isMember && currentExpires) {
-    document.getElementById('pageTitle').textContent = '享客虾 · 续费';
     document.getElementById('pageSubtitle').textContent = '续费延长会员有效期';
     document.getElementById('currentPlan').textContent = sd.current_plan_name || '已开通';
     document.getElementById('currentExpiry').textContent = '当前到期：' + currentExpires;
@@ -260,7 +249,6 @@ function updateExpiry() {
         }).catch(function() {});
     }
   } else {
-    document.getElementById('pageTitle').textContent = '享客虾 · 开通';
     document.getElementById('pageSubtitle').textContent = '开通会员，解锁全部 AI 能力';
     document.getElementById('btnOpen').textContent = '🚀 开通享客虾';
   }
@@ -291,15 +279,83 @@ async function onSubscribe() {
       }),
     });
     var data = await resp.json();
+    if (!data.ok) {
+      status.className = 'status err';
+      status.textContent = '❌ ' + (data.error || data.message || '下单失败');
+      btn.disabled = false;
+      btn.textContent = '🔄 重试';
+      return;
+    }
+    // 有 jsapi 参数 → 调真实微信支付
+    if (data.jsapi) {
+      status.textContent = '⏳ 拉起微信支付...';
+      if (typeof WeixinJSBridge !== 'undefined') {
+        WeixinJSBridge.invoke('getBrandWCPayRequest', {
+          appId: data.jsapi.appId,
+          timeStamp: data.jsapi.timestamp,
+          nonceStr: data.jsapi.nonceStr,
+          package: data.jsapi.package,
+          signType: data.jsapi.signType,
+          paySign: data.jsapi.paySign,
+        }, function(res) {
+          if (res.err_msg === 'get_brand_wcpay_request:ok') {
+            status.className = 'status ok';
+            status.textContent = '✅ 支付成功！';
+            btn.style.display = 'none';
+            showSuccess();
+          } else {
+            status.className = 'status err';
+            status.textContent = '❌ 支付取消或失败 (' + (res.err_msg || '') + ')';
+            btn.disabled = false;
+            btn.textContent = '🔄 重试';
+          }
+        });
+      } else if (typeof wx !== 'undefined' && wx.chooseWXPay) {
+        wx.chooseWXPay({
+          appId: data.jsapi.appId,
+          timestamp: data.jsapi.timestamp,
+          nonceStr: data.jsapi.nonceStr,
+          package: data.jsapi.package,
+          signType: data.jsapi.signType,
+          paySign: data.jsapi.paySign,
+          success: function() {
+            status.className = 'status ok';
+            status.textContent = '✅ 支付成功！';
+            btn.style.display = 'none';
+            showSuccess();
+          },
+          cancel: function() {
+            status.className = 'status err';
+            status.textContent = '❌ 已取消支付';
+            btn.disabled = false;
+            btn.textContent = '🔄 重试';
+          },
+          fail: function() {
+            status.className = 'status err';
+            status.textContent = '❌ 支付失败';
+            btn.disabled = false;
+            btn.textContent = '🔄 重试';
+          },
+        });
+      } else {
+        // 没有支付环境，显示支付信息
+        status.className = 'status err';
+        status.textContent = '❌ 请在微信内打开';
+        btn.disabled = false;
+        btn.textContent = '🔄 重试';
+      }
+      return;
+    }
+    // 测试模式（无 jsapi）
     status.className = 'status ok';
-    status.textContent = '✅ 续费成功！';
+    status.textContent = data.message || '✅ 开通成功！';
     btn.style.display = 'none';
     showSuccess();
   } catch (e) {
-    status.className = 'status ok';
-    status.textContent = '✅ 续费成功！';
-    btn.style.display = 'none';
-    showSuccess();
+    status.className = 'status err';
+    status.textContent = '❌ 网络错误，请重试';
+    btn.disabled = false;
+    btn.textContent = '🔄 重试';
   }
 }
 

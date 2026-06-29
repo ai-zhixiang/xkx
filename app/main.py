@@ -138,27 +138,111 @@ async def admin_page():
 
 @app.get('/go/s/{openid}')
 async def go_subscribe(openid: str):
-    """短链接：查 DB 取昵称后跳转"""
+    """短链接：服务号 OAuth → subscribe 页"""
     from urllib.parse import quote
-    nickname = "虾友"
+    
+    # 始终跳 OAuth 获取服务号 openid（snsapi_base 静默授权）
+    # OAuth 回调后会存 openid 到 channel_bindings，再跳 subscribe 页
+    wechat_appid = os.getenv('WECHAT_APPID', 'wx79c1f7db6d290510')
+    cb_url = f"https://ai.pangoozn.com/api/pay/oauth-callback?from_url={quote('https://ai.pangoozn.com/go/s/' + quote(openid, safe=''))}"
+    oauth_url = f"https://open.weixin.qq.com/connect/oauth2/authorize?appid={wechat_appid}&redirect_uri={quote(cb_url, safe='')}&response_type=code&scope=snsapi_userinfo&state={openid}#wechat_redirect"
+    return RedirectResponse(url=oauth_url)
+
+@app.get('/api/pay/oauth-callback')
+async def oauth_callback(code: str = '', state: str = '', from_url: str = ''):
+    """服务号 OAuth 回调：换 openid → 拿昵称 → 存 channel_bindings → 跳回"""
+    from urllib.parse import quote, unquote
+    from fastapi import Query
+    import httpx
+    
+    _from = from_url or ''
+    
+    if not code:
+        return RedirectResponse(url=unquote(_from) if _from else 'https://ai.pangoozn.com/subscribe')
+    
+    wechat_appid = os.getenv('WECHAT_APPID', 'wx79c1f7db6d290510')
+    wechat_secret = os.getenv('WECHAT_APPSECRET', '')
+    
+    # ── 1. 用 code 换 access_token + openid ──
+    _svc_openid = ''
+    _nickname = ''
     try:
-        from app.models import get_db, AsyncSessionLocal
-        from sqlalchemy import text as sa_text
-        async with AsyncSessionLocal() as db:
-            r = await db.execute(
-                sa_text("SELECT nickname FROM channel_bindings WHERE channel_user_id LIKE :oid LIMIT 1"),
-                {"oid": openid + "%"}
+        async with httpx.AsyncClient(timeout=10) as _c:
+            tr = await _c.get(
+                f"https://api.weixin.qq.com/sns/oauth2/access_token"
+                f"?appid={wechat_appid}&secret={wechat_secret}&code={code}&grant_type=authorization_code"
             )
-            row = r.fetchone()
-            if row and row[0]:
-                nickname = row[0]
+            td = tr.json()
+            _svc_openid = td.get('openid', '')
+            at = td.get('access_token', '')
+            
+            # ── 2. 用 snsapi_userinfo 拿昵称 ──
+            if at:
+                ur = await _c.get(
+                    f"https://api.weixin.qq.com/sns/userinfo"
+                    f"?access_token={at}&openid={_svc_openid}&lang=zh_CN"
+                )
+                ud = ur.json()
+                if ud.get('nickname'):
+                    _nickname = ud['nickname']
     except:
         pass
-    target = f"/subscribe?openid={quote(openid)}&nickname={quote(nickname)}"
-    return RedirectResponse(url=target)
+    
+    if not _svc_openid:
+        _svc_openid = state.split('@')[0]
+    
+    # ── 3. 存服务号 openid + nickname 到 channel_bindings ──
+    if _svc_openid:
+        try:
+            from app.models import AsyncSessionLocal
+            from sqlalchemy import text as sa_text
+            async with AsyncSessionLocal() as _db:
+                if _nickname:
+                    await _db.execute(
+                        sa_text("UPDATE channel_bindings SET openid = :svc, nickname = :nick WHERE channel_user_id LIKE :oid"),
+                        {"svc": _svc_openid, "nick": _nickname, "oid": state.split('@')[0] + "%"}
+                    )
+                else:
+                    await _db.execute(
+                        sa_text("UPDATE channel_bindings SET openid = :svc WHERE channel_user_id LIKE :oid"),
+                        {"svc": _svc_openid, "oid": state.split('@')[0] + "%"}
+                    )
+                await _db.commit()
+        except:
+            pass
+    
+    # ── 4. 昵称：优先微信拿到的，其次 DB，最后兜底 ──
+    if not _nickname:
+        try:
+            from app.models import AsyncSessionLocal
+            from sqlalchemy import text as sa_text
+            async with AsyncSessionLocal() as _db2:
+                _nr = await _db2.execute(
+                    sa_text("SELECT nickname FROM channel_bindings WHERE channel_user_id LIKE :oid LIMIT 1"),
+                    {"oid": state.split('@')[0] + "%"}
+                )
+                _nrow = _nr.fetchone()
+                if _nrow and _nrow[0]:
+                    _nickname = _nrow[0]
+        except:
+            pass
+    
+    if not _nickname:
+        _nickname = "虾友"
+    
+    from urllib.parse import quote as _q
+    return RedirectResponse(url=f"/subscribe?openid={_q(_svc_openid)}&nickname={_q(_nickname)}")
 
 @app.get('/subscribe', response_class=HTMLResponse)
 async def subscribe_page(openid: str = '', nickname: str = '', plan: str = ''):
+    # 没有 openid → 跳转 OAuth 获取身份
+    if not openid:
+        wechat_appid = os.getenv('WECHAT_APPID', 'wx79c1f7db6d290510')
+        from urllib.parse import quote
+        cb_url = "https://ai.pangoozn.com/api/pay/oauth-callback?from_url=" + quote("https://ai.pangoozn.com/subscribe")
+        oauth_url = f"https://open.weixin.qq.com/connect/oauth2/authorize?appid={wechat_appid}&redirect_uri={quote(cb_url, safe='')}&response_type=code&scope=snsapi_userinfo&state=subscribe#wechat_redirect"
+        return RedirectResponse(url=oauth_url)
+    
     with open('app/static/subscribe.html', 'r', encoding='utf-8') as f:
         html = f.read()
     
@@ -192,6 +276,7 @@ async def subscribe_page(openid: str = '', nickname: str = '', plan: str = ''):
     
     data = {
         "openid": openid,
+        "service_openid": '',  # 由 OAuth 回调直接传正确 openid 到 URL
         "nickname": nickname,
         "plan": plan,
         "current_plan_name": current_plan_name,

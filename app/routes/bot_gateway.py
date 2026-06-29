@@ -317,13 +317,22 @@ async def register_bot(req: BotRegisterRequest):
                 )
                 msg = "Bot 已更新"
             else:
+                # 看有没有对应的服务号 openid
+                cb_svc = await session.execute(
+                    sa_text("SELECT openid FROM channel_bindings WHERE channel_user_id = :uid AND openid IS NOT NULL AND openid != '' LIMIT 1"),
+                    {"uid": req.user_id}
+                )
+                svc_row = cb_svc.fetchone()
+                svc_openid = svc_row[0] if svc_row else ""
+                
                 await session.execute(
                     sa_text("""
-                        INSERT INTO bot_accounts (bot_id, bot_token, user_id, nickname, backend)
-                        VALUES (:bid, :token, :uid, :nick, :backend)
+                        INSERT INTO bot_accounts (bot_id, bot_token, user_id, svc_openid, nickname, backend)
+                        VALUES (:bid, :token, :uid, :svc, :nick, :backend)
                     """),
                     {"bid": req.bot_id, "token": req.bot_token, 
-                     "uid": req.user_id, "nick": req.nickname, 
+                     "uid": req.user_id, "svc": svc_openid,
+                     "nick": req.nickname, 
                      "backend": req.backend},
                 )
                 msg = "Bot 注册成功"
@@ -720,12 +729,16 @@ async def _background_qr_poll(session_id: str, qrcode: str):
                                 {"uid": user_id},
                             )
                             if old.fetchone():
-                                # 更新旧 Bot 的 token
+                                # 旧 bot 停用，插入新 bot（token 和 bot_id 是一对一的）
                                 await _db.execute(
-                                    _st("UPDATE bot_accounts SET bot_token = :tok, is_active = true, updated_at = NOW() WHERE user_id = :uid"),
-                                    {"tok": bot_token, "uid": user_id},
+                                    _st("UPDATE bot_accounts SET is_active = false, updated_at = NOW() WHERE user_id = :uid AND is_active = true"),
+                                    {"uid": user_id},
                                 )
-                                logger.info(f"[QR] 🔄 已更新旧 Bot token (user_id={user_id[:20]}...)")
+                                await _db.execute(
+                                    _st("INSERT INTO bot_accounts (bot_id, bot_token, user_id, nickname, is_active, platform, backend) VALUES (:bid, :tok, :uid, :nick, true, 'weixin', 'hermes')"),
+                                    {"bid": bot_id, "tok": bot_token, "uid": user_id, "nick": nickname or "虾友"},
+                                )
+                                logger.info(f"[QR] 🔄 旧 Bot 停用，新 Bot 已注册: {bot_id}")
                             else:
                                 # 插入新 Bot
                                 await _db.execute(
@@ -973,7 +986,7 @@ async def activate_bot(data: dict):
         welcome_text = (
             "\U0001f99e \u6b22\u8fce\u52a0\u5165\u4eab\u5ba2\u867e\uff01 \U0001f389\n\n"
             "\u626b\u7801\u6210\u529f\uff0cBot \u5df2\u5c31\u7eea \u2705\n\n"
-            "\u25b6\ufe0f \u5f00\u901a\u4f1a\u5458\uff1ahttps://hai.pangoozn.com/subscribe\n\n"
+            "\u25b6\ufe0f \u5f00\u901a\u4f1a\u5458\uff1ahttps://ai.pangoozn.com/subscribe\n\n"
             "\u5f00\u901a\u540e\u53ef\u89e3\u9501\uff1a\n"
             "\u2022 \U0001f4ac AI \u5bf9\u8bdd\n"
             "\u2022 \U0001f3b5 AI \u5199\u6b4c\n"
@@ -1336,7 +1349,7 @@ async def bot_webhook(data: dict):
         # 发送欢迎消息 + 开通页面链接
         response = ("\U0001f99e \u6b22\u8fce\u52a0\u5165\u4eab\u5ba2\u867e\uff01 \U0001f389\n\n"
                     "\u70b9\u51fb\u67e5\u770b\u6b22\u8fce\u9875\uff1a\n"
-                    "https://hai.pangoozn.com/subscribe")
+                    "https://ai.pangoozn.com/subscribe")
         return {"success": True, "response": response}
     
     # 已绑定 → 注入用户身份
@@ -1355,7 +1368,7 @@ async def bot_webhook(data: dict):
                 {"ct": "ilink", "cuid": user_id},
             )
             await _s.commit()
-        response = f"\U0001f99e \u6b22\u8fce\u52a0\u5165\u4eab\u5ba2\u867e\uff01{nickname} \U0001f389\n\n\u25b6\ufe0f \u5f00\u901a\u4f1a\u5458\uff1ahttps://hai.pangoozn.com/subscribe\n\n\u5f00\u901a\u540e\u53ef\u89e3\u9501\uff1a\n\u2022 \U0001f4ac AI \u5bf9\u8bdd\n\u2022 \U0001f3b5 AI \u5199\u6b4c\n\u2022 \U0001f3ac \u7167\u7247 MV\n\u2022 \U0001f3a4 \u58f0\u97f3\u514b\u9686"
+        response = f"\U0001f99e \u6b22\u8fce\u52a0\u5165\u4eab\u5ba2\u867e\uff01{nickname} \U0001f389\n\n\u25b6\ufe0f \u5f00\u901a\u4f1a\u5458\uff1ahttps://ai.pangoozn.com/subscribe\n\n\u5f00\u901a\u540e\u53ef\u89e3\u9501\uff1a\n\u2022 \U0001f4ac AI \u5bf9\u8bdd\n\u2022 \U0001f3b5 AI \u5199\u6b4c\n\u2022 \U0001f3ac \u7167\u7247 MV\n\u2022 \U0001f3a4 \u58f0\u97f3\u514b\u9686"
         return {"success": True, "response": response}
 
     if nickname:
@@ -1858,7 +1871,7 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
     try:
         sem = _get_hermes_semaphore()
         await sem.acquire()
-        headers = {"Content-Type": "application/json", "Authorization": "Bearer DEEPSEEK_API_KEY"}
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {os.getenv('HERMES_API_KEY', 'sk-xiakexia-external-server')}"}
         if use_session_id:
             headers["X-Hermes-Session-Id"] = use_session_id
 

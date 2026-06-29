@@ -9,6 +9,7 @@ import hashlib
 import string
 import secrets
 import logging
+logging.basicConfig(level=logging.INFO, format='%(name)s [%(levelname)s] %(message)s')
 from datetime import datetime, date, timedelta
 
 from fastapi import APIRouter, Request, Depends, HTTPException
@@ -83,7 +84,7 @@ async def create_order(data: CreateOrderRequest, db: AsyncSession = Depends(get_
     if plan.price <= 0:
         raise HTTPException(400, '该套餐无需支付')
 
-    # 用户
+    # 用户 - 仅查找或创建占位记录，不更新状态/点数
     result = await db.execute(
         select(Subscriber).options(selectinload(Subscriber.plan))
         .where(Subscriber.openid == data.openid)
@@ -92,51 +93,26 @@ async def create_order(data: CreateOrderRequest, db: AsyncSession = Depends(get_
     is_new = not sub
 
     today = date.today()
+    # 计算续费后到期日（用于订单记录，但不更新 subscriber）
+    if sub and sub.expires_at and sub.expires_at > today:
+        calc_expires = sub.expires_at + timedelta(days=plan.months * 30)
+    else:
+        calc_expires = today + timedelta(days=plan.months * 30)
 
     if not sub:
         sub = Subscriber(
             openid=data.openid,
             nickname=data.nickname or f'虾客{data.openid[-4:]}',
             plan_id=plan.id,
-            status=SubscriberStatus.ACTIVE,
+            status=SubscriberStatus.PENDING,  # PENDING，付款后才激活
             started_at=today,
-            expires_at=today + timedelta(days=plan.months * 30),
+            expires_at=today,  # 占位
             messages_limit=plan.monthly_messages,
             last_reset_at=today,
-            xiake_points=plan.months * 3000,  # 每月 3000 虾点
+            xiake_points=0,  # 付款后才加
         )
-    else:
-        sub.plan_id = plan.id
-        sub.messages_limit = plan.monthly_messages
-        sub.messages_used = 0
-        # 续费：叠加虾点（上限不要超过配额 2 倍）
-        monthly_points = plan.months * 3000
-        max_points = monthly_points * 2
-        sub.xiake_points = min((sub.xiake_points or 0) + monthly_points, max_points)
-        old_expires = sub.expires_at if sub.expires_at and sub.expires_at > today else today
-        sub.expires_at = old_expires + timedelta(days=plan.months * 30)
-
-    db.add(sub)
-    await db.flush()
-
-    # 新用户转化追踪
-    if is_new:
-        try:
-            from sqlalchemy import select as _sel
-            vr = await db.execute(
-                _sel(PageVisit).where(
-                    PageVisit.openid == data.openid,
-                    PageVisit.converted == False
-                ).order_by(PageVisit.created_at.desc()).limit(1)
-            )
-            visit = vr.scalar_one_or_none()
-            if visit:
-                visit.converted = True
-                visit.converted_at = datetime.now()
-                visit.subscriber_id = sub.id
-                await db.flush()
-        except Exception:
-            pass
+        db.add(sub)
+        await db.flush()
 
     # 订单
     order = SubOrder(
@@ -144,80 +120,81 @@ async def create_order(data: CreateOrderRequest, db: AsyncSession = Depends(get_
         plan_id=plan.id,
         plan_name=plan.name,
         amount=plan.price,
-        months=1,
+        months=plan.months,
         status=OrderStatus.PENDING,
         payment_method='wechat',
-        new_expires_at=sub.expires_at,
+        new_expires_at=calc_expires,
     )
     db.add(order)
     await db.flush()
 
-    # 手机号绑定：下单时如有手机号，自动建立/更新通道绑定
-    if hasattr(data, "phone") and data.phone:
-        try:
-            from app.models import AsyncSessionLocal as _asf
-            from sqlalchemy import text as _t
-            async with _asf() as _session:
-                # Look up channel_binding by phone
-                cb_row = await _session.execute(
-                    _t("SELECT channel_type, channel_user_id FROM channel_bindings WHERE phone = :p AND user_account_id IS NULL LIMIT 1"),
-                    {"p": data.phone},
-                )
-                cb = cb_row.fetchone()
-                if cb:
-                    await _session.execute(
-                        _t("UPDATE channel_bindings SET user_account_id = :uid, openid = :oid, nickname = :nick WHERE phone = :p"),
-                        {"uid": sub.id, "oid": data.openid, "nick": data.nickname or "", "p": data.phone},
-                    )
-                    await _session.commit()
-                    logger.info(f"[支付] 手机 {data.phone[-4:]} 绑定到 subscriber {sub.id}")
-        except Exception as e:
-            logger.warning(f"[支付] 手机绑定失败: {e}")
-
-    await db.commit()
-    await db.refresh(order)
-
-    # 测试模式：跳过微信支付，直接标记已付
+    # 测试模式：跳过微信支付，直接激活
     if not WXPAY_ENABLED:
         order.status = OrderStatus.PAID
         order.paid_at = datetime.now()
-        # 激活订阅
+        # 真正激活 subscriber
         sub.status = SubscriberStatus.ACTIVE
-        if order.new_expires_at:
-            sub.expires_at = order.new_expires_at
+        sub.xiake_points = plan.months * 3000
+        sub.expires_at = calc_expires
+        if is_new:
+            sub.started_at = today
         await db.commit()
+        await db.refresh(order)
 
         # 推 Bot 确认消息
         try:
-            import httpx
             async with httpx.AsyncClient(timeout=5) as _hc:
                 from sqlalchemy import text as sa_text
-                cb = await db.execute(
-                    sa_text("SELECT bot_id, user_id FROM bot_accounts WHERE user_id LIKE :oid AND is_active = true LIMIT 1"),
-                    {"oid": data.openid + "%"}
+                # 查 channel_bindings: svc_openid → channel_user_id(iLink user_id)
+                _bot_row = None
+                _bot_uid = ""
+                _cb = await db.execute(
+                    sa_text("SELECT channel_user_id FROM channel_bindings WHERE openid = :oid LIMIT 1"),
+                    {"oid": data.openid}
                 )
-                cb_row = cb.fetchone()
-                if cb_row:
+                _cb_row = _cb.fetchone()
+                if _cb_row:
+                    _bot_uid = _cb_row[0]
+                    _ba = await db.execute(
+                        sa_text("SELECT bot_id, user_id FROM bot_accounts WHERE (user_id = :uid1 OR user_id LIKE :uid2) AND is_active = true LIMIT 1"),
+                        {"uid1": _bot_uid, "uid2": _bot_uid.split('@')[0] + "%"}
+                    )
+                    _bot_row = _ba.fetchone()
+                if not _bot_row:
+                    # 兜底：直接查 bot_accounts.svc_openid
+                    _ba2 = await db.execute(
+                        sa_text("UPDATE bot_accounts SET svc_openid = :svc WHERE svc_openid IS NULL AND user_id LIKE :oid AND is_active = true RETURNING bot_id, user_id"),
+                        {"svc": data.openid, "oid": "%" + data.openid[-8:] + "%"}
+                    )
+                    _bot_row = _ba2.fetchone()
+                if _bot_row:
+                    # 回写 svc_openid 方便下次查
+                    try:
+                        await db.execute(
+                            sa_text("UPDATE bot_accounts SET svc_openid = :svc WHERE bot_id = :bid AND (svc_openid IS NULL OR svc_openid = '')"),
+                            {"svc": data.openid, "bid": _bot_row[0]}
+                        )
+                        await db.commit()
+                    except:
+                        pass
                     remain = (sub.expires_at - date.today()).days if sub.expires_at else 30
-                    # 从 DB 取真实昵称
-                    real_nick = data.nickname or sub.nickname or ""
+                    real_nick = data.nickname or ""
+                    try:
+                        _cn = await db.execute(
+                            sa_text("SELECT nickname FROM channel_bindings WHERE openid = :oid LIMIT 1"),
+                            {"oid": data.openid}
+                        )
+                        _cnr = _cn.fetchone()
+                        if _cnr and _cnr[0]:
+                            real_nick = _cnr[0]
+                    except:
+                        pass
                     if not real_nick:
-                        try:
-                            cb_name = await db.execute(
-                                sa_text("SELECT nickname FROM channel_bindings WHERE channel_user_id LIKE :oid LIMIT 1"),
-                                {"oid": data.openid + "%"}
-                            )
-                            nr = cb_name.fetchone()
-                            if nr and nr[0]:
-                                real_nick = nr[0]
-                        except:
-                            pass
-                    if not real_nick:
-                        real_nick = f"虾客{data.openid[-4:]}"
+                        real_nick = sub.nickname or "虾友"
                     pts = sub.xiake_points or 0
                     await _hc.post("http://127.0.0.1:9100/api/subscription-confirmed", json={
-                        "bot_id": cb_row[0],
-                        "to_user": cb_row[1],
+                        "bot_id": _bot_row[0],
+                        "to_user": _bot_row[1],
                         "nickname": real_nick,
                         "plan_name": plan.name,
                         "remain_days": remain,
@@ -317,22 +294,27 @@ async def pay_notify(request: Request, db: AsyncSession = Depends(get_db)):
     resource = data.get('resource', {})
     
     # 解密 ciphertext（AEAD_AES_256_GCM）
+    # 注意：nonce 直接 utf-8 字节，不 base64 解码
     ciphertext = resource.get('ciphertext', '')
+    tx = None
     if ciphertext:
-        import base64
-        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-        nonce = resource.get('nonce', '')
-        associated_data = resource.get('associated_data', '')
-        key_bytes = WX_API_V3_KEY.encode('utf-8')
-        aesgcm = AESGCM(key_bytes)
-        # 微信回调 base64 可能不带 padding，统一补齐
-        def _pad(s):
-            return s + '=' * (4 - len(s) % 4) if len(s) % 4 else s
-        ct_bytes = base64.b64decode(_pad(ciphertext))
-        ad_bytes = base64.b64decode(_pad(associated_data)) if associated_data else None
-        nonce_bytes = base64.b64decode(_pad(nonce))
-        decrypted = aesgcm.decrypt(nonce_bytes, ct_bytes, ad_bytes)
-        tx = json.loads(decrypted.decode('utf-8'))
+        try:
+            import base64
+            from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+            nonce = resource.get('nonce', '')
+            associated_data = resource.get('associated_data', '')
+            key_bytes = WX_API_V3_KEY.encode('utf-8')
+            aesgcm = AESGCM(key_bytes)
+            ct_bytes = base64.b64decode(ciphertext)
+            nonce_bytes = nonce.encode('utf-8')
+            ad_bytes = associated_data.encode('utf-8') if associated_data else None
+            decrypted = aesgcm.decrypt(nonce_bytes, ct_bytes, ad_bytes)
+            tx = json.loads(decrypted.decode('utf-8'))
+        except Exception as e:
+            import traceback
+            print(f'[支付回调] 解密失败: type={type(e).__name__} msg={e}', flush=True)
+            traceback.print_exc()
+            return JSONResponse({'code': 'SUCCESS'})
     else:
         tx = resource
     
@@ -365,10 +347,175 @@ async def pay_notify(request: Request, db: AsyncSession = Depends(get_db)):
             sub.status = SubscriberStatus.ACTIVE
             if order.new_expires_at:
                 sub.expires_at = order.new_expires_at
+            # 加虾点
+            monthly_points = order.months * 3000
+            max_points = monthly_points * 2
+            sub.xiake_points = min((sub.xiake_points or 0) + monthly_points, max_points)
 
         await db.commit()
 
+        # 推 Bot 确认消息
+        if sub and order:
+            try:
+                today = date.today()
+                remain = (sub.expires_at - today).days if sub.expires_at and sub.expires_at > today else 30
+                async with httpx.AsyncClient(timeout=5) as _hc:
+                    from sqlalchemy import text as sa_text
+                    # 查 channel_bindings: svc_openid → channel_user_id(iLink user_id)
+                    _bot_row = None
+                    _cb = await db.execute(
+                        sa_text("SELECT channel_user_id FROM channel_bindings WHERE openid = :oid LIMIT 1"),
+                        {"oid": sub.openid}
+                    )
+                    _cb_row = _cb.fetchone()
+                    if _cb_row:
+                        _bot_uid = _cb_row[0]
+                        _ba = await db.execute(
+                            sa_text("SELECT bot_id, user_id FROM bot_accounts WHERE (user_id = :uid1 OR user_id LIKE :uid2) AND is_active = true LIMIT 1"),
+                            {"uid1": _bot_uid, "uid2": _bot_uid.split('@')[0] + "%"}
+                        )
+                        _bot_row = _ba.fetchone()
+                    if not _bot_row:
+                        # 兜底：直接查 bot_accounts.svc_openid
+                        _ba2 = await db.execute(
+                            sa_text("UPDATE bot_accounts SET svc_openid = :svc WHERE svc_openid IS NULL AND user_id LIKE :oid AND is_active = true RETURNING bot_id, user_id"),
+                            {"svc": sub.openid, "oid": "%" + sub.openid[-8:] + "%"}
+                        )
+                        _bot_row = _ba2.fetchone()
+                    if _bot_row:
+                        real_nick = sub.nickname or ""
+                        try:
+                            cbn = await db.execute(
+                                sa_text("SELECT nickname FROM channel_bindings WHERE openid = :oid LIMIT 1"),
+                                {"oid": sub.openid}
+                            )
+                            cbn_row = cbn.fetchone()
+                            if cbn_row and cbn_row[0]:
+                                real_nick = cbn_row[0]
+                        except:
+                            pass
+                        if not real_nick:
+                            real_nick = "虾友"
+                        plan_name = order.plan_name or "会员"
+                        pts = sub.xiake_points or 0
+                        await _hc.post("http://127.0.0.1:9100/api/subscription-confirmed", json={
+                            "bot_id": _bot_row[0],
+                            "to_user": _bot_row[1],
+                            "nickname": real_nick,
+                            "plan_name": plan_name,
+                            "remain_days": remain,
+                            "expires_at": str(sub.expires_at) if sub.expires_at else "",
+                            "xiake_points": pts,
+                        })
+                        logger.info(f"[支付回调→Bot] 已通知 {sub.openid[:12] if sub.openid else ''}...")
+                    else:
+                        logger.warning(f"[支付回调→Bot] 未找到 openid 对应的 bot")
+            except Exception as _ne:
+                logger.warning(f"[支付回调→Bot] 推确认失败: {_ne}")
+
     return JSONResponse({'code': 'SUCCESS'})
+
+
+# ===== 微信支付订单查询 =====
+
+@router.post('/api/pay/query')
+async def query_order(data: dict):
+    """查询微信支付订单状态"""
+    out_trade_no = data.get('out_trade_no', '')
+    if not out_trade_no:
+        return {'ok': False, 'error': '缺少订单号'}
+    
+    private_key = _load_private_key()
+    if not private_key:
+        return {'ok': False, 'error': '商户证书未配置'}
+    
+    nonce = _gen_nonce()
+    timestamp = str(int(time.time()))
+    path = f'/v3/pay/transactions/out-trade-no/{out_trade_no}'
+    sign_str = f'GET\\n{path}\\n{timestamp}\\n{nonce}\\n\\n'
+    signature = _sign_sha256_rsa(sign_str)
+    
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(
+                f'https://api.mch.weixin.qq.com{path}?mchid={WX_MCHID}',
+                headers={
+                    'Authorization': f'WECHATPAY2-SHA256-RSA2048 mchid="{WX_MCHID}",nonce_str="{nonce}",timestamp="{timestamp}",serial_no="{WX_SERIAL_NO}",signature="{signature}"',
+                },
+            )
+            return {'ok': r.status_code == 200, 'status': r.status_code, 'data': r.json() if r.status_code == 200 else r.text[:500]}
+    except Exception as e:
+        return {'ok': False, 'error': str(e)}
+
+
+# ===== 微信支付退款 =====
+
+@router.post('/api/pay/refund')
+async def refund_order(data: dict):
+    """退款"""
+    order_id = data.get('order_id', 0)
+    if not order_id:
+        return {'ok': False, 'error': '缺少订单ID'}
+    
+    db = await anext(get_db())
+    try:
+        result = await db.execute(select(SubOrder).where(SubOrder.id == order_id))
+        order = result.scalar_one_or_none()
+        if not order:
+            return {'ok': False, 'error': '订单不存在'}
+        if order.status != OrderStatus.PAID:
+            return {'ok': False, 'error': '订单未支付'}
+        
+        out_trade_no = order.out_trade_no or f'XKX{order.id}'
+        refund_no = f'REF{order.id}{int(time.time())}'
+        total_fee = order.amount
+        refund_fee = total_fee
+        
+        private_key = _load_private_key()
+        if not private_key:
+            return {'ok': False, 'error': '商户证书未配置'}
+        
+        nonce = _gen_nonce()
+        timestamp = str(int(time.time()))
+        body = {
+            'out_trade_no': out_trade_no,
+            'out_refund_no': refund_no,
+            'amount': {'refund': refund_fee, 'total': total_fee, 'currency': 'CNY'},
+        }
+        body_str = json.dumps(body, ensure_ascii=False, separators=(',', ':'))
+        sign_str = f'POST\\n/v3/refund/domestic/refunds\\n{timestamp}\\n{nonce}\\n{body_str}\\n'
+        signature = _sign_sha256_rsa(sign_str)
+        
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.post(
+                'https://api.mch.weixin.qq.com/v3/refund/domestic/refunds',
+                content=body_str.encode(),
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': f'WECHATPAY2-SHA256-RSA2048 mchid="{WX_MCHID}",nonce_str="{nonce}",timestamp="{timestamp}",serial_no="{WX_SERIAL_NO}",signature="{signature}"',
+                },
+            )
+            if r.status_code == 200:
+                refund_data = r.json()
+                order.status = OrderStatus.REFUNDED
+                order.refund_status = 'SUCCESS'
+                order.refund_id = refund_data.get('refund_id', '')
+                await db.commit()
+                
+                # 扣减 subscriber 点数
+                result2 = await db.execute(select(Subscriber).where(Subscriber.id == order.subscriber_id))
+                sub = result2.scalar_one_or_none()
+                if sub:
+                    sub.xiake_points = max(0, (sub.xiake_points or 0) - 3000)
+                    await db.commit()
+                
+                return {'ok': True, 'refund_id': refund_data.get('refund_id', ''), 'status': refund_data.get('status', '')}
+            else:
+                return {'ok': False, 'error': f'退款失败 ({r.status_code})', 'detail': r.text[:500]}
+    except Exception as e:
+        return {'ok': False, 'error': str(e)}
+    finally:
+        await db.close()
 
 
 # ===== 健康检查 =====
