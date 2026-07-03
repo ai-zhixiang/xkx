@@ -145,6 +145,7 @@ var isInWx = /MicroMessenger/i.test(navigator.userAgent);
     } catch(e){}
     showProfile();
     window.history.replaceState({}, '', location.href.split('?')[0]);
+    checkMembership(pOpenid);
     afterAuth();
     return;
   }
@@ -178,6 +179,30 @@ function showProfile() {
   } else {
     document.getElementById('userAvatar').style.display = 'none';
   }
+}
+
+function checkMembership(openid) {
+  if (!openid) return;
+  fetch('/api/member-status?openid=' + encodeURIComponent(openid))
+  .then(function(r){return r.json()})
+  .then(function(m){
+    if (m.status === 'active' || m.status === 'expiring') {
+      var btn = document.getElementById('botCta').querySelector('button');
+      var title = document.getElementById('pageTitle');
+      title.textContent = '欢迎回来，享客虾会员 🦞';
+      btn.textContent = '🦞 继续使用享客虾';
+      // 显示会员信息条
+      var infoHtml = '<div style="background:rgba(212,168,71,0.08);border:1px solid rgba(212,168,71,0.15);border-radius:12px;padding:14px 16px;margin-bottom:16px;text-align:left;">'
+        + '<div style="font-size:13px;font-weight:600;color:#b89230;">🎉 会员有效</div>'
+        + '<div style="font-size:12px;color:#666;margin-top:6px;">到期：' + (m.expires_at || '') + ' ｜ 剩余 ' + m.days_left + ' 天</div>'
+        + '</div>';
+      var msg = document.getElementById('statusMsg');
+      msg.innerHTML = infoHtml;
+      msg.className = 'msg';
+      msg.style.display = 'block';
+    }
+  })
+  .catch(function(){});
 }
 
 function afterAuth() {

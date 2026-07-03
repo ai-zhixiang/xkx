@@ -581,9 +581,8 @@ async def _run_session(bot: BotSession, session: aiohttp.ClientSession,
                     link = "https://ai.pangoozn.com/subscribe?openid=" + uid + "&nickname=" + urllib.parse.quote(nick or "虾友")
                     reply_text = (
                         "🦞 开通享客虾会员\n\n"
-                        "🔥 公测特惠 · 限时一折\n"
-                        "• 基础月卡 ¥9.9/月（原价¥99）\n"
-                        "• 基础年卡 ¥99/年（原价¥990）\n\n"
+                        "• 基础月卡 ¥99/月\n"
+                        "• 基础年卡 ¥999/年\n\n"
                         "👇 点此开通\n"
                         + link + "\n\n"
                         "回复「会员」查看当前状态"
@@ -652,7 +651,7 @@ async def _run_session(bot: BotSession, session: aiohttp.ClientSession,
                             if used >= FREE_DAILY_LIMIT:
                                 await send_text(bot.token, from_user,
                                     f"🦞 今日免费 {FREE_DAILY_LIMIT} 条对话已用完~\n\n"
-                                    f"开通享客虾会员 ¥9.9/月起，畅聊无限 ✨\n"
+                                    f"开通享客虾会员 ¥99/月起，畅聊无限 ✨\n"
                                     f"https://ai.pangoozn.com/subscribe",
                                     ctx, session)
                                 await _q_db.close()

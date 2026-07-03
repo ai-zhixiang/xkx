@@ -1913,6 +1913,16 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
         
         messages.append({"role": "user", "content": content})
 
+        # ── 研究类问题 → 直接走豆包 ──
+        if _is_research_query(content):
+            logger.info(f"[研究] 路由到豆包: {content[:60]}")
+            doubao_reply = await _try_doubao_fallback(messages, use_max_tokens)
+            if doubao_reply:
+                await _save_conversation_pair(session_key, user_account_id, openid, content, doubao_reply)
+                sem.release()
+                return doubao_reply
+            logger.info("[研究] 豆包失败,降级到 Hermes")
+
         # 在熔断器保护下调用 Hermes API
         try:
             resp = await _hermes_cb.call(
@@ -1929,10 +1939,20 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
                 timeout=cb_timeout,
             )
         except (asyncio.TimeoutError, httpx.ReadTimeout, httpx.TimeoutException, CircuitBreakerOpen) as cb_e:
-            sem.release()
             is_cb_open = isinstance(cb_e, CircuitBreakerOpen)
             logger.warning(f"[CB] Hermes 调用失败({type(cb_e).__name__}): {cb_e}")
-            # 不降级 DS（无上下文无意义），直接报错
+            # 降级到 Kimi
+        except (asyncio.TimeoutError, httpx.ReadTimeout, httpx.TimeoutException, CircuitBreakerOpen) as cb_e:
+            is_cb_open = isinstance(cb_e, CircuitBreakerOpen)
+            logger.warning(f"[CB] Hermes 调用失败({type(cb_e).__name__}): {cb_e}")
+            # 降级链: Kimi → 豆包
+            reply = await _try_kimi_fallback(messages, use_max_tokens)
+            if not reply:
+                reply = await _try_doubao_fallback(messages, use_max_tokens)
+            sem.release()
+            if reply:
+                await _save_conversation_pair(session_key, user_account_id, openid, content, reply)
+                return reply
             err_msg = "服务暂时不可用（AI 引擎忙），请稍后重试。"
             await _save_conversation_pair(session_key, user_account_id, openid, content, err_msg)
             return err_msg
@@ -1948,7 +1968,18 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
             return reply
         else:
             logger.warning(f"Hermes API 非 200 状态: {resp.status_code}")
+            # 降级链: Kimi → 豆包
+            reply = await _try_kimi_fallback(messages, use_max_tokens)
+            if not reply:
+                reply = await _try_doubao_fallback(messages, use_max_tokens)
             sem.release()
+            if reply:
+                await _save_conversation_pair(session_key, user_account_id, openid, content, reply)
+                return reply
+            sem.release()
+            if kimi_reply:
+                await _save_conversation_pair(session_key, user_account_id, openid, content, kimi_reply)
+                return kimi_reply
             return f"🤖 AI 引擎异常，请稍后重试。"
     except Exception as e:
         sem.release()
@@ -2018,24 +2049,34 @@ async def push_message(data: dict):
     from_name = data.get("from_name", "")
     
     if not bot_id or not to_user or not content:
-        return {"success": False, "error": "missing params: bot_id, to_user, content"}
-    
-    if from_name:
-        content = f"来自《{from_name}》:{content}"
-    
-    # 写入 DB 推送队列(连接器会异步投递)
+import os
+async def _try_kimi_fallback(messages: list, max_tokens: int) -> str | None:
+    """当 Hermes/DeepSeek 挂掉时降级到 Kimi"""
+    kimi_key = os.getenv("KIMI_API_KEY") or "sk-kXgMafNOyie08UyOijhYO2c9xtihjkqQLZ5R8FyojaP9fyvJ"
     try:
-        from app.models import AsyncSessionLocal as _asf
-        from sqlalchemy import text as _t
-        async with _asf() as _s:
-            await _s.execute(
-                _t("INSERT INTO push_queue (bot_id, to_user, content, context_token) VALUES (:bid, :uid, :ct, :ctx)"),
-                {"bid": bot_id, "uid": to_user, "ct": content, "ctx": context_token or ""},
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                "https://api.moonshot.cn/v1/chat/completions",
+                headers={"Authorization": f"Bearer {kimi_key}", "Content-Type": "application/json"},
+                json={
+                    "model": "moonshot-v1-8k",
+                    "messages": messages if len(messages) > 1 else [
+                        {"role": "system", "content": "你是享客虾 AI 助手，回复简洁实用。"},
+                        {"role": "user", "content": messages[-1]["content"] if messages else ""}
+                    ],
+                    "max_tokens": max_tokens,
+                    "temperature": 0.7,
+                    "stream": False,
+                },
             )
-            await _s.commit()
-        
-        logger.info(f"[Push] 已入队 bot={bot_id[:20]} to={to_user[:20]}")
-        return {"success": True, "message": "已入队,连接器将异步投递"}
+            if resp.status_code == 200:
+                data = resp.json()
+                reply = data["choices"][0]["message"]["content"]
+                logger.info(f"[Kimi] 降级成功 ({len(reply)} chars)")
+                return reply
+            else:
+                logger.warning(f"[Kimi] API 返回 {resp.status_code}: {resp.text[:200]}")
+                return None
     except Exception as e:
-        logger.error(f"[Push] 入队失败: {e}")
-        return {"success": False, "error": str(e)}
+        logger.warning(f"[Kimi] 降级失败: {e}")
+        return None

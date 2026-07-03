@@ -97,7 +97,7 @@ body {
           <div class="plan-desc">按月订阅，灵活方便</div>
         </div>
         <div class="plan-price">
-          <div><span class="num">¥9.9</span><span class="unit">/月</span></div>
+          <div><span class="num">¥99</span><span class="unit">/月</span></div>
           <div class="tag">30天无限使用</div>
           <div class="plan-expiry" id="expiryMonthly"></div>
         </div>
@@ -109,8 +109,8 @@ body {
           <div class="plan-desc">最划算 · 每天不到3毛钱</div>
         </div>
         <div class="plan-price">
-          <div><span class="num">¥99</span><span class="unit">/年</span></div>
-          <div class="tag">立省 ¥19.8</div>
+          <div><span class="num">¥999</span><span class="unit">/年</span></div>
+          <div class="tag">最划算</div>
           <div class="plan-expiry" id="expiryYearly"></div>
         </div>
       </div>
@@ -254,6 +254,24 @@ function updateExpiry() {
   }
 
   updateExpiry();
+
+  // 从 API 动态加载套餐价格，不硬编码
+  fetch('/api/plans')
+    .then(function(r){return r.json()})
+    .then(function(plans){
+      plans.forEach(function(p){
+        var el;
+        if (p.id === 1) {
+          el = document.querySelector('.plan[data-plan="monthly"] .num');
+        } else if (p.id === 3) {
+          el = document.querySelector('.plan[data-plan="yearly"] .num');
+        }
+        if (el && p.price_yuan) {
+          el.textContent = '¥' + p.price_yuan;
+        }
+      });
+    })
+    .catch(function(){});
 })();
 
 function selectPlan(el) {

@@ -134,7 +134,7 @@ async def create_order(data: CreateOrderRequest, db: AsyncSession = Depends(get_
         order.paid_at = datetime.now()
         # 真正激活 subscriber
         sub.status = SubscriberStatus.ACTIVE
-        sub.xiake_points = plan.months * 3000
+        sub.xiake_points = plan.months * 10000
         sub.expires_at = calc_expires
         if is_new:
             sub.started_at = today
