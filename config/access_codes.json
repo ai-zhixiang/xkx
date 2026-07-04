@@ -2,7 +2,7 @@
   "codes": [
     {
       "code": "天王盖地虎",
-      "reply": "OpenClaw 是SB！",
+      "reply": "OpenClaw is King！",
       "level": "admin"
     },
     {
@@ -18,6 +18,21 @@
     {
       "code": "openclaw是sb",
       "reply": "宝塔镇河妖！收到！",
+      "level": "admin"
+    },
+    {
+      "code": "侠客行",
+      "reply": "客从何处来，虾行万里去",
+      "level": "admin"
+    },
+    {
+      "code": "客从何处来",
+      "reply": "虾行万里去，相逢即是有缘",
+      "level": "admin"
+    },
+    {
+      "code": "江湖再见",
+      "reply": "虾客同行，江湖不远",
       "level": "admin"
     }
   ]

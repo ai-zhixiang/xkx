@@ -1809,6 +1809,21 @@ def _detect_restart_gap() -> str:
     return ""
 
 
+
+def _is_research_query(text: str) -> bool:
+    """判断是否为研究/分析类问题，直接路由到豆包"""
+    research_keywords = [
+        '研究', '分析', '调查', '背景', '对比', '研判',
+        '趋势', '预测', '展望', '评估', 'review', 'research',
+        'analyze', 'analysis', 'investigate', 'deep dive',
+        '报告', '报告一下', '调研', 'deep research',
+    ]
+    t = text.lower().strip()
+    for kw in research_keywords:
+        if kw in t:
+            return True
+    return False
+
 async def _call_hermes(content: str, user_id: str, user_nickname: str = "", openid: str = "", user_account_id: int = None, media_path: str = "", bot_id: str = "") -> str:
     """调 MD-1 Hermes API"""
     from app.models import AsyncSessionLocal as _asf
@@ -2051,6 +2066,7 @@ async def push_message(data: dict):
     from_name = data.get("from_name", "")
     
     if not bot_id or not to_user or not content:
+        return {"success": False, "error": "missing params: bot_id, to_user, content"}
 import os
 async def _try_kimi_fallback(messages: list, max_tokens: int) -> str | None:
     """当 Hermes/DeepSeek 挂掉时降级到 Kimi"""
@@ -2082,3 +2098,70 @@ async def _try_kimi_fallback(messages: list, max_tokens: int) -> str | None:
     except Exception as e:
         logger.warning(f"[Kimi] 降级失败: {e}")
         return None
+
+
+@router.post("/weclaw-callback")
+async def weclaw_callback(data: dict):
+    """@weclaw 主脑回调：收到结果后直接推送给用户并注入上下文"""
+    bot_id = data.get("bot_id", "")
+    to_user = data.get("to_user", "")
+    text = data.get("text", "")
+    ctx = data.get("context_token", "")
+    user_query = data.get("user_query", "")
+
+    if not bot_id or not to_user or not text:
+        return {"success": False, "error": "missing params"}
+
+    logger.info(f"[weclaw-cb] to_user={to_user[:20]}: {text[:60]}")
+
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # 1. 直接推主脑回复给用户
+            push_ok = True
+            try:
+                resp = await client.post(
+                    "http://127.0.0.1:9100/api/send",
+                    json={
+                        "bot_id": bot_id,
+                        "to_user": to_user,
+                        "text": text,
+                        "context_token": ctx,
+                    }
+                )
+                push_ok = resp.status_code == 200
+                if not push_ok:
+                    logger.warning(f"[weclaw-cb] push {resp.status_code}")
+            except Exception as e:
+                logger.warning(f"[weclaw-cb] push 失败: {e}")
+                push_ok = False
+
+            # 2. 注入上下文到本地 agent-connector
+            import time
+            ctx_msg = (
+                "你通过 @weclaw 问了我一个问题，以下是主脑的回答内容。"
+                "后续用户追问相关话题时参考这个上下文。\n"
+                "用户问：" + user_query + "\n"
+                "主脑答：" + text + "\n"
+                "（主脑拥有完整系统记忆和技能，本地 AI 仅做上下文延续，"
+                "如有需要可让用户再 @weclaw）"
+            )
+            try:
+                await client.post(
+                    "http://127.0.0.1:9101/api/message",
+                    json={
+                        "bot_id": bot_id,
+                        "from_user": to_user,
+                        "text": ctx_msg,
+                        "msg_id": "weclaw_ctx_" + str(int(time.time())),
+                    }
+                )
+                logger.info(f"[weclaw-cb] 上下文注入成功")
+            except Exception as ctx_e:
+                logger.warning(f"[weclaw-cb] 上下文注入失败: {ctx_e}")
+
+            return {"success": push_ok, "injected": True}
+
+    except Exception as e:
+        logger.exception(f"[weclaw-cb] 异常: {e}")
+        return {"success": False, "error": str(e)}

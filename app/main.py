@@ -37,7 +37,8 @@ async def lifespan(app: FastAPI):
     await init_db()
     print("[享客虾] 数据库就绪")
 
-    async with AsyncSessionLocal() as session:
+    import app.models
+    async with app.models.AsyncSessionLocal() as session:
         from sqlalchemy import select, func
         result = await session.execute(select(func.count(Plan.id)))
         if result.scalar() == 0:
