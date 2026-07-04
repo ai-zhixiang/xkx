@@ -1652,8 +1652,20 @@ async def _route_to_ai(bot_id: str, user_id: str, content: str, user_nickname: s
         # 每日限额在 webhook 层已处理，这里正常调 AI
         reply = await _call_hermes(content, user_id, user_nickname, openid, user_account_id, media_path, bot_id)
 
-        # 回复注入策略：前3条纯回答，第4条起带案例
-        dc = len(reply)  # placeholder - real quota check at webhook layer
+        # 回复注入策略：仅免费用户展示案例
+    try:
+        from app.models import AsyncSessionLocal as _asf2
+        from sqlalchemy import text as _st
+        async with _asf2() as _s:
+            row = await _s.execute(
+                _st("SELECT openid FROM subscribers WHERE openid=:uid AND status='ACTIVE' AND expires_at > NOW()"),
+                {"uid": user_id}
+            )
+            is_member = row.fetchone() is not None
+    except:
+        is_member = False
+
+    if not is_member:
         case_file = "/home/ubuntu/weclaw-keepalive/config/cases.json"
         if os.path.exists(case_file):
             import json, random
@@ -1665,7 +1677,7 @@ async def _route_to_ai(bot_id: str, user_id: str, content: str, user_nickname: s
                 typ = "\U0001f3b4" if "image" in c else "\U0001f3b5"
                 reply += chr(10)*2 + '---' + chr(10) + typ + ' ' + c.get('title','') + chr(10) + '   ' + c.get('desc','') + chr(10) + '   \U0001f449 ' + c.get('link','') + chr(10)
                 reply += "\n\U0001f4ac \u56de\u590d\u300c\u8f6c\u4eba\u5de5\u300d\u8054\u7cfb\u771f\u4eba\u5ba2\u670d"
-        return reply
+    return reply
 
 
 
