@@ -1657,8 +1657,9 @@ async def _route_to_ai(bot_id: str, user_id: str, content: str, user_nickname: s
         from app.models import AsyncSessionLocal as _asf2
         from sqlalchemy import text as _st
         async with _asf2() as _s:
+            # map iLink user_id to openid via channel_bindings
             row = await _s.execute(
-                _st("SELECT openid FROM subscribers WHERE openid=:uid AND status='ACTIVE' AND expires_at > NOW()"),
+                _st("SELECT s.openid FROM subscribers s JOIN channel_bindings c ON s.openid=c.openid WHERE c.channel_user_id=:uid AND s.status='ACTIVE' AND s.expires_at > NOW() LIMIT 1"),
                 {"uid": user_id}
             )
             is_member = row.fetchone() is not None
