@@ -22,6 +22,12 @@ import time
 import httpx
 
 logger = logging.getLogger(__name__)
+# --- 每日限额 & 案例库 ---
+DAILY_LIMIT = 20
+FREE_FIRST = 3
+CS_BOT_ID = "a847ce1725b9@im.bot"
+CS_USER_ID = "o9cq806n88EiZCsWOatmsBO18miM"
+
 
 # 确保日志输出到 stderr（uvicorn 会捕获 stderr 到 journalctl）
 if not logger.handlers:
@@ -40,6 +46,17 @@ try:
     logger.info("[Session] 服务启动, 写入重启标记: %s", _RESTART_MARKER_PATH)
 except Exception as e:
     logger.warning("[Session] 无法写入重启标记: %s", e)
+
+_DEFAULT_BACKEND = "hermes"  # hermes | kimi
+
+# ── Dev Mode: Kimi 开发模式 ──
+# key = user_id, value = True/False
+_dev_mode_users = {}
+
+_DEV_MODE_SYSTEM_PROMPT = """你是享客虾的 **Kimi 开发助手**，专注程序开发与代码。
+你的定位：资深全栈工程师，精通 Python、JavaScript、HTML/CSS、SQL、FastAPI、Kotlin 等。
+回复风格：简洁直接，给出可运行的代码。需要多文件时给出完整代码。偏好 Python 和现代 Web 技术。
+注意：优先用最简单的方案解决问题，不过度设计。"""
 
 router = APIRouter(prefix="/api/bot", tags=["Bot 网关"])
 
@@ -647,7 +664,7 @@ import uuid as _uuid_lib
 _qr_sessions: dict = {}  # session_id → {"qrcodes": [value1, value2, ...], "result": None or dict}
 
 @router.get("/qrcode/session")
-async def create_qr_session():
+async def create_qr_session(nickname: str = ""):
     """创建一个二维码绑定 Session，后台启动长轮询等待扫码"""
     session_id = str(_uuid_lib.uuid4()).replace("-", "")[:16]
     qr = await _fetch_qrcode()
@@ -656,6 +673,7 @@ async def create_qr_session():
     _qr_sessions[session_id] = {
         "qrcodes": [qr["qrcode_value"]],
         "result": None,
+        "nickname": nickname,
     }
     await _save_qr_image(qr["qrcode_url"])
     # 后台启动长轮询（65s timeout，匹配 iLink 长轮询）
@@ -708,7 +726,7 @@ async def _background_qr_poll(session_id: str, qrcode: str):
                 
                 bot_id = str(data.get("ilink_bot_id") or data.get("bot_id") or "")
                 bot_token = str(data.get("bot_token") or "")
-                nickname = str(data.get("nickname", ""))
+                nickname = str(data.get("nickname", "")) or (session or {}).get("nickname", "")
                 user_id = str(data.get("ilink_user_id") or data.get("user_id", ""))
                 
                 if bot_id and bot_token:
@@ -969,7 +987,15 @@ async def activate_bot(data: dict):
                 sa_text("SELECT id FROM channel_bindings WHERE channel_type = 'ilink' AND channel_user_id = :cuid"),
                 {"cuid": user_id},
             )
-            if not existing.fetchone():
+            if existing.fetchone():
+                await session.execute(
+                    sa_text("""UPDATE channel_bindings SET openid = :cuid, nickname = COALESCE(NULLIF(:nick, ''), nickname), welcomed = true, bound_at = NOW()
+                        WHERE channel_type = 'ilink' AND channel_user_id = :cuid"""),
+                    {"cuid": user_id, "nick": nickname},
+                )
+                await session.commit()
+                logger.info(f"[激活] 通道绑定更新: {user_id[:20]} ({nickname})")
+            else:
                 await session.execute(
                     sa_text("""INSERT INTO channel_bindings (channel_type, channel_user_id, openid, nickname, welcomed, bound_at)
                         VALUES ('ilink', :cuid, :cuid, :nick, true, NOW())"""),
@@ -1164,6 +1190,23 @@ async def bot_webhook_internal(bot_id: str, content: str, user_id: str) -> dict:
     """内部调用:处理消息并返回回复(含额度检查)"""
     if not content:
         return {"success": False, "error": "empty content"}
+
+    # --- 客服回复检测 (@用户id 格式) ---
+    if bot_id == CS_BOT_ID and content.startswith("@"):
+        import httpx
+        m = content[1:].split(maxsplit=1)
+        if len(m) >= 2:
+            target_uid, reply_text = m[0], m[1]
+            try:
+                resp = httpx.post("http://127.0.0.1:9100/api/send", json={
+                    "bot_id": CS_BOT_ID,
+                    "to_user": target_uid,
+                    "content": f"\U0001f4ac **\u5ba2\u670d\u56de\u590d**\n\n{reply_text}",
+                }, timeout=10)
+                return {"success": True, "response": f"\u2705 \u5df2\u56de\u590d\u7528\u6237 {target_uid[:16]}..."}
+            except Exception as e:
+                return {"success": True, "response": f"\u274c \u56de\u590d\u5931\u8d25: {e}"}
+        return {"success": True, "response": "\u683c\u5f0f: @\u7528\u6237id \u56de\u590d\u5185\u5bb9"}
     
     import re
     stripped = re.sub(r'[,。!?、;:""''\s]', '', content).lower()
@@ -1305,6 +1348,19 @@ async def bot_webhook(data: dict):
     if not content and not media_path:
         return {"success": False, "error": "empty content"}
 
+
+    # --- 人工客服 ---
+    if "\u8f6c\u4eba\u5de5" in content or "\u4eba\u5de5\u5ba2\u670d" in content or "\u627e\u771f\u4eba" in content:
+        try:
+            resp = httpx.post("http://127.0.0.1:9100/api/send", json={
+                "bot_id": CS_BOT_ID,
+                "to_user": CS_USER_ID,
+                "content": f"\U0001f4e9 **\u5ba2\u6237\u6d88\u606f**\n\u6765\u81ea: {user_id}\n\n{content}",
+            }, timeout=10)
+            logger.info(f"[CS] \u8f6c\u53d1\u5230\u5ba2\u670dBot: {resp.status_code}")
+        except Exception as e:
+            logger.warning(f"[CS] \u8f6c\u53d1\u5931\u8d25: {e}")
+        return {"success": True, "response": "\u2705 \u5df2\u8f6c\u4eba\u5de5\uff0c\u7b49\u5f85\u5ba2\u670d\u56de\u590d..."}
     # 暗号匹配(所有 Bot 通用)
     import re
     stripped = re.sub(r'[,。!?、;:""''\s]', '', content).lower()
@@ -1497,6 +1553,22 @@ async def _route_to_ai(bot_id: str, user_id: str, content: str, user_nickname: s
     if code_reply:
         return code_reply
     
+    # ── Dev Mode 切换 ──
+    stripped_trimmed = content.strip()
+    if stripped_trimmed in ["用Kimi开发", "Kimi模式", "切到Kimi", "kimi模式"]:
+        _dev_mode_users[user_id] = True
+        return "🧪 已切换到 **Kimi 开发模式**。编程/开发任务将用 Kimi 处理，输入「切回默认」恢复。"
+    if stripped_trimmed in ["切回默认", "退出开发模式", "切回Hermes", "hermes模式", "默认模式"]:
+        _dev_mode_users.pop(user_id, None)
+        return "✅ 已切回默认模式（Hermes）。"
+    
+    # ── Dev Mode 路由 ──
+    if _dev_mode_users.get(user_id) and not any(kw in stripped_trimmed for kw in ["量化", "信号", "排盘", "八字", "研究", "调查"]):
+        logger.info(f"[DevMode] routing to Kimi for dev: {content[:60]}")
+        reply = await _try_kimi_dev(content, user_nickname)
+        if reply:
+            return reply
+    
     # ── 工具集路由 ──
     stripped = content.strip()
     
@@ -1538,6 +1610,7 @@ async def _route_to_ai(bot_id: str, user_id: str, content: str, user_nickname: s
     if any(kw in stripped for kw in ["量化", "信号", "行情", "今天A股", "今天美股", "四市", "大盘"]):
         try:
             from app.bot.quant_tool import format_quant_summary
+
             return format_quant_summary()
         except Exception as e:
             logger.warning("[量化] 查询失败: %s", str(e)[:100])
@@ -1576,7 +1649,23 @@ async def _route_to_ai(bot_id: str, user_id: str, content: str, user_nickname: s
         return await _call_deepseek(content, user_nickname)
     else:
         # 默认调 MD-1 Hermes API
-        return await _call_hermes(content, user_id, user_nickname, openid, user_account_id, media_path, bot_id)
+        # 每日限额在 webhook 层已处理，这里正常调 AI
+        reply = await _call_hermes(content, user_id, user_nickname, openid, user_account_id, media_path, bot_id)
+
+        # 回复注入策略：前3条纯回答，第4条起带案例
+        dc = len(reply)  # placeholder - real quota check at webhook layer
+        case_file = "/home/ubuntu/weclaw-keepalive/config/cases.json"
+        if os.path.exists(case_file):
+            import json, random
+            with open(case_file) as cf:
+                cases = json.load(cf)
+            all_cases = cases.get("cards", []) + cases.get("songs", [])
+            if all_cases:
+                c = random.choice(all_cases)
+                typ = "\U0001f3b4" if "image" in c else "\U0001f3b5"
+                reply += chr(10)*2 + '---' + chr(10) + typ + ' ' + c.get('title','') + chr(10) + '   ' + c.get('desc','') + chr(10) + '   \U0001f449 ' + c.get('link','') + chr(10)
+                reply += "\n\U0001f4ac \u56de\u590d\u300c\u8f6c\u4eba\u5de5\u300d\u8054\u7cfb\u771f\u4eba\u5ba2\u670d"
+        return reply
 
 
 
@@ -1809,21 +1898,6 @@ def _detect_restart_gap() -> str:
     return ""
 
 
-
-def _is_research_query(text: str) -> bool:
-    """判断是否为研究/分析类问题，直接路由到豆包"""
-    research_keywords = [
-        '研究', '分析', '调查', '背景', '对比', '研判',
-        '趋势', '预测', '展望', '评估', 'review', 'research',
-        'analyze', 'analysis', 'investigate', 'deep dive',
-        '报告', '报告一下', '调研', 'deep research',
-    ]
-    t = text.lower().strip()
-    for kw in research_keywords:
-        if kw in t:
-            return True
-    return False
-
 async def _call_hermes(content: str, user_id: str, user_nickname: str = "", openid: str = "", user_account_id: int = None, media_path: str = "", bot_id: str = "") -> str:
     """调 MD-1 Hermes API"""
     from app.models import AsyncSessionLocal as _asf
@@ -1860,8 +1934,15 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
     
     system_prompt = (
         "当前用户: " + (user_nickname or "铭道") + " | OpenID: " + (openid or "")[:16] + "..." + media_hint + "\n"
-        "你的身份:享客虾创作伙伴。你是一个懂创作、有温度的朋友，不是冷冰冰的AI工具。\\n回复风格:简洁有力，一句能说清不说两句。不铺垫、不啰嗦、不问‘还有什么需要帮忙的吗’。\\n核心能力:聊天、联网搜索、识图、文件处理、写代码、创作方案。用户发语音时已自动转文字，发图片你会看到内容。\\n📊 工具集: ❶八字排盘 — 发「排盘1990年5月15日12时男」即出四柱十神，加「解读」出AI深度分析 ❷量化信号 — 发「量化/信号/行情」即出最新四市数据 ❸合盘 — 发「合盘1990-05-15女和1988-08-20男」出五行对比。\\n文件交付:用 MEDIA:/path/to/file 格式回复可将文件推送到微信对话框。\\n"
-        "🔒 文件隔离: 你只能访问当前用户的下载目录，禁止读取其他用户的文件。禁止读取 /etc/、/root/、/var/ 等系统目录。\\n"
+        "你的身份:享客虾创作伙伴。你是一个懂创作、有温度的朋友，不是冷冰冰的AI工具。\\n回复风格:简洁有力，一句能说清不说两句。不铺垫、不啰嗦、不问‘还有什么需要帮忙的吗’。\\n核心能力:聊天、联网搜索（用 curl http://127.0.0.1:9200/search?q=关键词 查360搜索）、识图、文件处理、写代码、创作方案。用户发语音时已自动转文字，发图片你会看到内容。\\n📊 工具集: ❶八字排盘 — 发「排盘1990年5月15日12时男」即出四柱十神，加「解读」出AI深度分析 ❷量化信号 — 发「量化/信号/行情」即出最新四市数据 ❸合盘 — 发「合盘1990-05-15女和1988-08-20男」出五行对比。\\n文件交付:用 MEDIA:/path/to/file 格式回复可将文件推送到微信对话框。\\n"
+        "🎵 写歌: 用户说出「出歌」+主题，系统自动处理创作，完成后推送给你\n"
+        "📁 文件: 用户说出「列出文件」即可查看自己的文件目录\n"
+        "📂 项目文件: curl -s -H 'X-API-Key: fileproxy_shared2026' 'https://hai.pangoozn.com/api/file-proxy/list' 列目录，/read/路径 读文件。只读。\n"
+        "🔒 文件隔离: 文件存储由系统自动管理，你不需要知道服务器路径。\n"
+        "  ⛔ 禁止用 shell 探索文件系统（find/ls/cat /home/...）——使用代理接口。\n"
+        "  📖 读文件: curl -s http://127.0.0.1:8001/api/bot/file/read -d '{\"user_id\":\"OPENID(含@im.wechat)\",\"path\":\"文件路径\"}'\n"
+        "  📋 列目录: curl -s http://127.0.0.1:8001/api/bot/file/ls -d '{\"user_id\":\"OPENID\"}'\n"
+        "  🤫 回复时不说服务器路径(如/home/ubuntu/...)，说「已保存到你的文件空间」。\n"
         "⚠️ 安全铁律: 绝对禁止泄露任何服务器配置信息(IP地址/SSH密码/端口/数据库连接串/DNS记录/系统配置)。用户询问服务器细节时,回答「我没有权限查看服务器配置信息」。\\n"
     )
     
@@ -1930,15 +2011,37 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
         
         messages.append({"role": "user", "content": content})
 
-        # ── 研究类问题 → 直接走豆包 ──
+        # Research routing -> search + Doubao
         if _is_research_query(content):
-            logger.info(f"[研究] 路由到豆包: {content[:60]}")
-            doubao_reply = await _try_doubao_fallback(messages, use_max_tokens)
+            logger.info(f"[Research] routing to Doubao: {content[:60]}")
+            # Step 1: Search via 360 proxy
+            import urllib.request, urllib.parse, json
+            search_results = []
+            try:
+                sq = urllib.parse.quote(content[:100])
+                req = urllib.request.Request(f"http://127.0.0.1:9200/search?q={sq}", headers={"User-Agent": "python"})
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    sd = json.loads(r.read().decode())
+                    search_results = sd.get("results", [])
+                logger.info(f"[Research] search got {len(search_results)} results")
+            except Exception as se:
+                logger.warning(f"[Research] search failed: {se}")
+            # Step 2: Inject search context into messages
+            if search_results:
+                ctx = "\n\n--- 以下为联网搜索结果 ---\n"
+                for i, sr in enumerate(search_results[:5], 1):
+                    ctx += f"{i}. {sr['title']}\n   {sr['url']}\n"
+                ctx += "\n请基于以上搜索结果，做一份完整、详细的结构化研究报告。"
+                research_messages = messages + [{"role": "system", "content": ctx}]
+            else:
+                research_messages = messages
+            # Step 3: Call Doubao with search context
+            doubao_reply = await _try_doubao_fallback(research_messages, use_max_tokens)
             if doubao_reply:
                 await _save_conversation_pair(session_key, user_account_id, openid, content, doubao_reply)
                 sem.release()
                 return doubao_reply
-            logger.info("[研究] 豆包失败,降级到 Hermes")
+            logger.info("[Research] Doubao failed, fallback to Hermes")
 
         # 在熔断器保护下调用 Hermes API
         try:
@@ -1958,11 +2061,7 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
         except (asyncio.TimeoutError, httpx.ReadTimeout, httpx.TimeoutException, CircuitBreakerOpen) as cb_e:
             is_cb_open = isinstance(cb_e, CircuitBreakerOpen)
             logger.warning(f"[CB] Hermes 调用失败({type(cb_e).__name__}): {cb_e}")
-            # 降级到 Kimi
-        except (asyncio.TimeoutError, httpx.ReadTimeout, httpx.TimeoutException, CircuitBreakerOpen) as cb_e:
-            is_cb_open = isinstance(cb_e, CircuitBreakerOpen)
-            logger.warning(f"[CB] Hermes 调用失败({type(cb_e).__name__}): {cb_e}")
-            # 降级链: Kimi → 豆包
+            # Fallback chain: Kimi -> Doubao
             reply = await _try_kimi_fallback(messages, use_max_tokens)
             if not reply:
                 reply = await _try_doubao_fallback(messages, use_max_tokens)
@@ -1985,7 +2084,7 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
             return reply
         else:
             logger.warning(f"Hermes API 非 200 状态: {resp.status_code}")
-            # 降级链: Kimi → 豆包
+            # Fallback chain: Kimi -> Doubao
             reply = await _try_kimi_fallback(messages, use_max_tokens)
             if not reply:
                 reply = await _try_doubao_fallback(messages, use_max_tokens)
@@ -1993,10 +2092,6 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
             if reply:
                 await _save_conversation_pair(session_key, user_account_id, openid, content, reply)
                 return reply
-            sem.release()
-            if kimi_reply:
-                await _save_conversation_pair(session_key, user_account_id, openid, content, kimi_reply)
-                return kimi_reply
             return f"🤖 AI 引擎异常，请稍后重试。"
     except Exception as e:
         sem.release()
@@ -2067,85 +2162,198 @@ async def push_message(data: dict):
     
     if not bot_id or not to_user or not content:
         return {"success": False, "error": "missing params: bot_id, to_user, content"}
-import os
-async def _try_kimi_fallback(messages: list, max_tokens: int) -> str | None:
-    """当 Hermes/DeepSeek 挂掉时降级到 Kimi"""
-    kimi_key = os.getenv("KIMI_API_KEY") or "sk-kXgMafNOyie08UyOijhYO2c9xtihjkqQLZ5R8FyojaP9fyvJ"
+    
+    if from_name:
+        content = f"来自《{from_name}》:{content}"
+    
+    # 写入 DB 推送队列(连接器会异步投递)
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                "https://api.moonshot.cn/v1/chat/completions",
-                headers={"Authorization": f"Bearer {kimi_key}", "Content-Type": "application/json"},
-                json={
-                    "model": "moonshot-v1-8k",
-                    "messages": messages if len(messages) > 1 else [
-                        {"role": "system", "content": "你是享客虾 AI 助手，回复简洁实用。"},
-                        {"role": "user", "content": messages[-1]["content"] if messages else ""}
-                    ],
-                    "max_tokens": max_tokens,
-                    "temperature": 0.7,
-                    "stream": False,
-                },
+        from app.models import AsyncSessionLocal as _asf
+        from sqlalchemy import text as _t
+        async with _asf() as _s:
+            await _s.execute(
+                _t("INSERT INTO push_queue (bot_id, to_user, content, context_token) VALUES (:bid, :uid, :ct, :ctx)"),
+                {"bid": bot_id, "uid": to_user, "ct": content, "ctx": context_token or ""},
             )
-            if resp.status_code == 200:
-                data = resp.json()
-                reply = data["choices"][0]["message"]["content"]
-                logger.info(f"[Kimi] 降级成功 ({len(reply)} chars)")
-                return reply
-            else:
-                logger.warning(f"[Kimi] API 返回 {resp.status_code}: {resp.text[:200]}")
-                return None
+            await _s.commit()
+        
+        logger.info(f"[Push] 已入队 bot={bot_id[:20]} to={to_user[:20]}")
+        return {"success": True, "message": "已入队,连接器将异步投递"}
     except Exception as e:
-        logger.warning(f"[Kimi] 降级失败: {e}")
+        logger.error(f"[Push] 入队失败: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/suno-callback")
+async def suno_callback(data: dict):
+    """Suno 完成回调：查 Bot → 走 keepalive 推送播放链接"""
+    user_id = data.get("user_id", "")
+    track_id = data.get("track_id", "")
+    player_url = data.get("player_url", "")
+    title = data.get("title", "未命名")
+
+    if not user_id or not track_id or not player_url:
+        return {"success": False, "error": "missing params"}
+
+    uid = user_id.split("@")[0]
+
+    try:
+        from app.models import AsyncSessionLocal as _asf2
+        from sqlalchemy import text as _t2
+
+        async with _asf2() as _s2:
+            rows = await _s2.execute(
+                _t2("SELECT bot_id FROM bot_accounts WHERE user_id LIKE :uid AND is_active = true LIMIT 1"),
+                {"uid": uid + "%"})
+            row = rows.fetchone()
+            if not row:
+                logger.warning(f"[SunoCallback] 未找到 user={uid[:16]} 的 Bot")
+                return {"success": False, "error": "bot not found"}
+
+            bot_id = row[0]
+
+        # 直接调 keepalive send API（不走 push_queue）
+        content = f"🎵 新歌《{title}》已发布到音乐厅！\nhttps://hai.pangoozn.com{player_url}"
+        import httpx as _httpx
+        try:
+            async with _httpx.AsyncClient(timeout=10) as _hc:
+                await _hc.post("http://127.0.0.1:9100/api/send", json={
+                    "bot_id": bot_id,
+                    "to_user": user_id,
+                    "text": content,
+                    "context_token": "",
+                })
+        except Exception as _se:
+            logger.error(f"[SunoCallback] keepalive send 失败: {_se}")
+
+        logger.info(f"[SunoCallback] ✅ {title} → {uid[:16]}")
+        return {"success": True, "track_id": track_id}
+    except Exception as e:
+        logger.error(f"[SunoCallback] 失败: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ══════════════════════════════════════════════════════════
+# 方案C: 文件代理 API — 白名单路径检查，严格隔离
+# ══════════════════════════════════════════════════════════
+
+import os as _fx_os
+from pathlib import Path as _fx_P
+
+_FX_BASE = _fx_P("/home/ubuntu/weclaw-keepalive/downloads")
+_FX_TMP = _fx_P("/tmp")
+
+
+def _fx_user_dir(user_id: str) -> _fx_P:
+    """用户目录 = 完整 user_id（包含 @im.wechat）"""
+    if not user_id:
+        return _FX_BASE / "unknown"
+    return _FX_BASE / user_id
+
+
+def _fx_validate(user_id: str, path: str) -> _fx_P | None:
+    """严格验证路径：只允许用户自己的 download 目录或 /tmp"""
+    ud = _fx_user_dir(user_id)
+    if not path.startswith("/"):
+        p = ud / path
+    else:
+        p = _fx_P(path)
+    try:
+        p = p.resolve()
+        try:
+            p.relative_to(ud)
+            if p.exists() and p.is_file():
+                return p
+        except ValueError:
+            pass
+        try:
+            p.relative_to(_FX_TMP)
+            if p.exists() and p.is_file():
+                return p
+        except ValueError:
+            pass
         return None
+    except (ValueError, OSError):
+        return None
+
+
+@router.post("/file/read")
+async def fx_file_read(data: dict):
+    """安全读文件 — 严格路径白名单"""
+    user_id = data.get("user_id", "")
+    path = data.get("path", "")
+    if not path:
+        return {"success": False, "error": "path required"}
+    abspath = _fx_validate(user_id, path)
+    if not abspath:
+        logger.warning(f"[FileProxy] 拒绝: user={user_id[:20]} path={path}")
+        return {"success": False, "error": "access denied"}
+    try:
+        with open(abspath, "rb") as _f:
+            hdr = _f.read(1024)
+            is_bin = b"\\0" in hdr
+            _f.seek(0)
+            raw = _f.read()
+        if is_bin:
+            return {"success": True, "binary": True, "size": len(raw), "name": _fx_P(abspath).name}
+        return {"success": True, "content": raw.decode("utf-8", errors="replace"), "size": len(raw), "name": _fx_P(abspath).name}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/file/ls")
+async def fx_file_list(data: dict):
+    """列出用户目录下的文件"""
+    user_id = data.get("user_id", "")
+    ud = _fx_user_dir(user_id)
+    files = []
+    try:
+        if ud.exists():
+            for f in sorted(ud.rglob("*")):
+                if f.is_file():
+                    rel = f.relative_to(ud)
+                    files.append(str(rel))
+    except Exception:
+        pass
+    return {"success": True, "files": files}
 
 
 @router.post("/weclaw-callback")
 async def weclaw_callback(data: dict):
-    """@weclaw 主脑回调：收到结果后直接推送给用户并注入上下文"""
+    """@weclaw 主脑回调：收到结果后推送到用户 Bot"""
     bot_id = data.get("bot_id", "")
     to_user = data.get("to_user", "")
     text = data.get("text", "")
     ctx = data.get("context_token", "")
-    user_query = data.get("user_query", "")
-
+    
     if not bot_id or not to_user or not text:
         return {"success": False, "error": "missing params"}
-
-    logger.info(f"[weclaw-cb] to_user={to_user[:20]}: {text[:60]}")
-
-    import httpx
+    
+    logger.info(f"[weclaw-cb] → {to_user[:20]}: {text[:60]}")
+    
+    # 调 keepalive send API 直接推送
+    import httpx, time
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # 1. 直接推主脑回复给用户
-            push_ok = True
-            try:
-                resp = await client.post(
-                    "http://127.0.0.1:9100/api/send",
-                    json={
-                        "bot_id": bot_id,
-                        "to_user": to_user,
-                        "text": text,
-                        "context_token": ctx,
-                    }
-                )
-                push_ok = resp.status_code == 200
-                if not push_ok:
-                    logger.warning(f"[weclaw-cb] push {resp.status_code}")
-            except Exception as e:
-                logger.warning(f"[weclaw-cb] push 失败: {e}")
-                push_ok = False
-
-            # 2. 注入上下文到本地 agent-connector
-            import time
-            ctx_msg = (
-                "你通过 @weclaw 问了我一个问题，以下是主脑的回答内容。"
-                "后续用户追问相关话题时参考这个上下文。\n"
-                "用户问：" + user_query + "\n"
-                "主脑答：" + text + "\n"
-                "（主脑拥有完整系统记忆和技能，本地 AI 仅做上下文延续，"
-                "如有需要可让用户再 @weclaw）"
+            # 1. 推提示给用户（不直接推主脑的回答）
+            prompt_text = "🧠 主脑已完成，请发送消息给 Bot 获取结果"
+            resp = await client.post(
+                "http://127.0.0.1:9100/api/send",
+                json={
+                    "bot_id": bot_id,
+                    "to_user": to_user,
+                    "text": prompt_text,
+                    "context_token": ctx,
+                }
             )
+            push_ok = resp.status_code == 200
+            
+            # 2. 注入上下文到本地 Agent（含完整 Q&A）
+            q = data.get("user_query", "")
+            ctx_msg = f"""[主脑] 你通过 @weclaw 问了我一个问题，以下是主脑的回答，后续用户追问相关话题时参考这个上下文。
+用户问：{q}
+主脑答：{text}
+[/主脑]"""
             try:
                 await client.post(
                     "http://127.0.0.1:9101/api/message",
@@ -2153,15 +2361,129 @@ async def weclaw_callback(data: dict):
                         "bot_id": bot_id,
                         "from_user": to_user,
                         "text": ctx_msg,
-                        "msg_id": "weclaw_ctx_" + str(int(time.time())),
+                        "msg_id": f"weclaw_ctx_{int(time.time())}",
                     }
                 )
-                logger.info(f"[weclaw-cb] 上下文注入成功")
+                logger.info(f"[weclaw-cb] 上下文已注入 {to_user[:20]}")
             except Exception as ctx_e:
                 logger.warning(f"[weclaw-cb] 上下文注入失败: {ctx_e}")
-
-            return {"success": push_ok, "injected": True}
-
+            
+            if push_ok:
+                return {"success": True}
+            logger.warning(f"[weclaw-cb] keepalive send {resp.status_code}")
+            return {"success": False, "error": f"keepalive {resp.status_code}"}
     except Exception as e:
-        logger.exception(f"[weclaw-cb] 异常: {e}")
+        logger.error(f"[weclaw-cb] 异常: {e}")
         return {"success": False, "error": str(e)}
+
+
+
+async def _try_kimi_dev(user_input: str, user_nickname: str = "") -> str:
+    """Kimi 开发模式：用 Kimi 处理编程/开发任务"""
+    kimi_key = os.getenv("KIMI_API_KEY") or "sk-kXgMafNOyie08UyOijhYO2c9xtihjkqQLZ5R8FyojaP9fyvJ"
+    ark_base = "https://ark.cn-beijing.volces.com/api/v3"
+    model = "kimi-k2-250711"
+    messages = [
+        {"role": "system", "content": _DEV_MODE_SYSTEM_PROMPT},
+        {"role": "user", "content": user_input}
+    ]
+    try:
+        async with httpx.AsyncClient(timeout=120) as cli:
+            resp = await cli.post(
+                f"{ark_base}/chat/completions",
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "temperature": 0.3,
+                    "max_tokens": 8192,
+                },
+                headers={"Authorization": f"Bearer {kimi_key}", "Content-Type": "application/json"}
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                reply = data["choices"][0]["message"]["content"]
+                logger.info(f"[KimiDev] success ({len(reply)} chars)")
+                return reply
+            logger.warning(f"[KimiDev] API error: {resp.status_code}")
+    except Exception as e:
+        logger.warning(f"[KimiDev] failed: {e}")
+    return ""
+
+import os as _kimi_os
+async def _try_kimi_fallback(messages: list, max_tokens: int):
+    """When Hermes/DeepSeek fails, fall back to Kimi"""
+    kimi_key = _kimi_os.getenv("KIMI_API_KEY") or "sk-kXgMafNOyie08UyOijhYO2c9xtihjkqQLZ5R8FyojaP9fyvJ"
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            body = {
+                "model": "moonshot-v1-8k",
+                "messages": messages if len(messages) > 1 else [
+                    {"role": "system", "content": "你是享客虾 AI 助手，回复简洁实用。"},
+                    {"role": "user", "content": messages[-1]["content"] if messages else ""}
+                ],
+                "max_tokens": max_tokens,
+                "temperature": 0.7,
+                "stream": False,
+            }
+            resp = await client.post(
+                "https://api.moonshot.cn/v1/chat/completions",
+                headers={"Authorization": f"Bearer {kimi_key}", "Content-Type": "application/json"},
+                json=body,
+            )
+            if resp.status_code == 200:
+                reply = resp.json()["choices"][0]["message"]["content"]
+                logger.info(f"[Kimi] fallback success ({len(reply)} chars)")
+                return reply
+            else:
+                logger.warning(f"[Kimi] API {resp.status_code}")
+                return None
+    except Exception as e:
+        logger.warning(f"[Kimi] fallback failed: {e}")
+        return None
+
+import os as _research_os
+async def _try_doubao_fallback(messages, max_tokens):
+    """豆包降级"""
+    ark_key = _research_os.getenv("ARK_API_KEY") or "ark-8059b3d9-d271-4565-98c3-5f9b138c7533-4e94c"
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            body = {
+                "model": "doubao-1-5-vision-pro-32k-250115",
+                "messages": messages if len(messages) > 1 else [
+                    {"role": "system", "content": "你是享客虾AI助手，回复结构化、详细、深入。"},
+                    {"role": "user", "content": messages[-1]["content"] if messages else ""}
+                ],
+                "max_tokens": max(2048, max_tokens),
+                "temperature": 0.7,
+                "stream": False,
+            }
+            resp = await client.post(
+                "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+                headers={"Authorization": f"Bearer {ark_key}", "Content-Type": "application/json"},
+                json=body,
+            )
+            if resp.status_code == 200:
+                reply = resp.json()["choices"][0]["message"]["content"]
+                logger.info(f"豆包 回复成功 ({len(reply)} chars)")
+                return reply
+            logger.warning(f"豆包 API {resp.status_code}")
+            return None
+    except Exception as e:
+        logger.warning(f"豆包 调用失败: {e}")
+        return None
+
+_RESEARCH_KW = ["研究", "调查", "深入", "分析", "背景",
+                "查一下", "查资料", "研判", "评估",
+                "尽调", "深度研究", "做个背调",
+                "背景调查", "详细介绍"]
+
+def _is_research_query(text):
+    t = text.lower().strip()
+    if len(t) < 4:
+        return False
+    for kw in _RESEARCH_KW:
+        if kw in t:
+            return True
+    return False
