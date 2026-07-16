@@ -1891,7 +1891,7 @@ async def handle_push_daily(request):
                     sent += 1
                 else:
                     failed += 1
-                await asyncio.sleep(0.3)
+                await asyncio.sleep(5)
 
             root_log.info(f"[push-daily] 推送完成: sent={sent}, failed={failed}, total={len(rows)}")
             return web.json_response({"success": True, "sent": sent, "failed": failed, "total": len(rows)})
