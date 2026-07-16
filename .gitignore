@@ -1,5 +1,11 @@
+.venv/
 __pycache__/
 *.pyc
-*.pyo
+*.bak
+*.bak2
+*.corrupted
 .env
-*.log
+downloads/
+static/
+config/
+scripts/
