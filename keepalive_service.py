@@ -2034,6 +2034,66 @@ async def handle_subscription_confirmed(request):
         root_log.error(f"[订阅确认] 异常: {e}")
         return web.json_response({"success": False, "error": str(e)}, status=500)
 
+
+async def handle_push_daily(request):
+    """每日精读发布后，向所有订阅用户推送文章
+
+    POST {"title": "...", "link": "...", "summary": "..."}
+    """
+    try:
+        data = await request.json()
+        title = data.get("title", "享客虾每日精读")
+        link = data.get("link", "")
+        summary = data.get("summary", "")
+
+        import asyncpg
+        conn = await asyncpg.connect(DB_DSN)
+        try:
+            rows = await conn.fetch("""
+                SELECT DISTINCT cb.channel_user_id, cb.nickname, ba.bot_id
+                FROM subscribers s
+                JOIN channel_bindings cb ON cb.openid = s.openid
+                JOIN bot_accounts ba ON ba.is_active = true
+                WHERE s.status IN ('ACTIVE', 'TRIAL')
+                  AND (s.expires_at IS NULL OR s.expires_at >= CURRENT_DATE)
+                  AND cb.channel_user_id IS NOT NULL AND cb.channel_user_id != ''
+                  AND cb.is_active = true
+            """)
+        finally:
+            await conn.close()
+
+        if not rows:
+            root_log.info("[push-daily] 无订阅用户，跳过推送")
+            return web.json_response({"success": True, "pushed": 0})
+
+        msg = f"📰 {title}\n\n{summary}\n\n👇 阅读全文\n{link}"
+
+        pushed = 0
+        errors = []
+        for row in rows:
+            cuid = row["channel_user_id"]
+            bid = row["bot_id"]
+            nick = row["nickname"] or ""
+            bot = _running_bots.get(bid)
+            if not bot:
+                errors.append(f"{bid}: bot 不在线")
+                continue
+            try:
+                await send_text(bot.token, cuid, msg)
+                pushed += 1
+                root_log.info("[push-daily] ✓ %s (%s) → %s", nick or cuid[:20], bid[:14], cuid[:20])
+            except Exception as e:
+                errors.append(f"{cuid[:20]}: {e}")
+                root_log.warning("[push-daily] ✗ %s: %s", cuid[:20], e)
+            await asyncio.sleep(0.3)  # 节流
+
+        root_log.info("[push-daily] 完成: %d 成功, %d 失败", pushed, len(errors))
+        return web.json_response({"success": True, "pushed": pushed, "errors": errors[:5]})
+    except Exception as e:
+        root_log.error("[push-daily] 异常: %s", e)
+        return web.json_response({"success": False, "error": str(e)}, status=500)
+
+
 async def run_http_server():
     app = web.Application()
     app.router.add_post("/api/send", handle_send)
@@ -2047,7 +2107,7 @@ async def run_http_server():
     await runner.setup()
     site = web.TCPSite(runner, "127.0.0.1", HTTP_PORT)
     await site.start()
-    root_log.info("🌐 HTTP API :9100 — send/welcome/health/reload")
+    root_log.info("🌐 HTTP API :9100 — send/welcome/push-daily/health/reload")
 
 # ══════════════════════════════════════════════
 # DB 同步

@@ -265,7 +265,7 @@ async def _send_bind_welcome(channel_user_id: str, nickname: str):
             "✨ 欢迎加入享客虾！\n\nBot 已就绪 ✅ 发送消息即可开始对话\n\n"
             "🎯 你可以：\n  💬 随意聊天、提问\n  🎵 说「写首歌」生成 AI 音乐\n"
             "  📸 发照片制作 MV\n  🎤 声音克隆（RVC）\n\n"
-            "💎 开通会员解锁全部功能：\n  https://ai.pangoozn.com/static/subscribe.html"
+            "💎 开通会员解锁全部功能：\n  https://ai.pangoozn.com/subscribe"
         )
         async with httpx.AsyncClient(timeout=10) as client:
             await client.post(
@@ -664,7 +664,7 @@ import uuid as _uuid_lib
 _qr_sessions: dict = {}  # session_id → {"qrcodes": [value1, value2, ...], "result": None or dict}
 
 @router.get("/qrcode/session")
-async def create_qr_session(nickname: str = ""):
+async def create_qr_session(nickname: str = "", openid: str = ""):
     """创建一个二维码绑定 Session，后台启动长轮询等待扫码"""
     session_id = str(_uuid_lib.uuid4()).replace("-", "")[:16]
     qr = await _fetch_qrcode()
@@ -674,6 +674,8 @@ async def create_qr_session(nickname: str = ""):
         "qrcodes": [qr["qrcode_value"]],
         "result": None,
         "nickname": nickname,
+        "oauth_nickname": nickname or "",
+        "oauth_openid": openid or "",
     }
     await _save_qr_image(qr["qrcode_url"])
     # 后台启动长轮询（65s timeout，匹配 iLink 长轮询）
@@ -1387,24 +1389,37 @@ async def bot_webhook(data: dict):
     bound_info = await _check_binding(channel_type, channel_user_id)
     
     if not bound_info.get("bound"):
-        # 未绑定 → 自动绑定(用户已扫码,只是激活回调没到)
+        # 自动绑定(用户已扫码,只是激活回调没到)
+        # 从 QR session 获取用户昵称（优先 OAuth 昵称，其次 iLink 扫码返回的 nickname）
+        _qr_nickname = ""
+        for _sid, _sdata in list(_qr_sessions.items()):
+            _sr = _sdata.get("result")
+            _oauth_nick = _sdata.get("oauth_nickname", "")
+            if _sr and _sr.get("user_id") == channel_user_id:
+                _qr_nickname = _oauth_nick or _sr.get("nickname", "")
+                break
+        if not _qr_nickname:
+            _qr_nickname = "虾友"
         try:
             from app.models import AsyncSessionLocal as _asf
             from sqlalchemy import text as _t
             async with _asf() as _s:
                 await _s.execute(
                     _t("""INSERT INTO channel_bindings (channel_type, channel_user_id, openid, nickname, welcomed, bound_at)
-                        VALUES (:ct, :cuid, :cuid, '', true, NOW())
+                        VALUES (:ct, :cuid, :cuid, :nick, true, NOW())
                         ON CONFLICT (channel_type, channel_user_id) DO NOTHING"""),
-                    {"ct": channel_type, "cuid": channel_user_id},
+                    {"ct": channel_type, "cuid": channel_user_id, "nick": _qr_nickname},
                 )
                 await _s.commit()
             logger.info(f"[自动绑定] 用户 {channel_user_id[:20]} 已自动绑定")
         except Exception as e:
             logger.warning(f"[自动绑定] 失败: {e}")
         # 发送欢迎消息 + 开通页面链接
-        response = ("\U0001f99e \u6b22\u8fce\u52a0\u5165\u4eab\u5ba2\u867e\uff01 \U0001f389\n\n"
-                    "\u70b9\u51fb\u67e5\u770b\u6b22\u8fce\u9875\uff1a\n"
+        response = ("🦞 欢迎加入享客虾！🎉\n\n"
+                    "💬 发消息即可开始对话\n"
+                    "🎵 说「写首歌」生成 AI 音乐\n"
+                    "📸 发照片制作 MV\n\n"
+                    "💎 开通会员解锁全部功能：\n"
                     "https://ai.pangoozn.com/subscribe")
         return {"success": True, "response": response}
     
@@ -1424,7 +1439,13 @@ async def bot_webhook(data: dict):
                 {"ct": "ilink", "cuid": user_id},
             )
             await _s.commit()
-        response = f"\U0001f99e \u6b22\u8fce\u52a0\u5165\u4eab\u5ba2\u867e\uff01{nickname} \U0001f389\n\n\u25b6\ufe0f \u5f00\u901a\u4f1a\u5458\uff1ahttps://ai.pangoozn.com/subscribe\n\n\u5f00\u901a\u540e\u53ef\u89e3\u9501\uff1a\n\u2022 \U0001f4ac AI \u5bf9\u8bdd\n\u2022 \U0001f3b5 AI \u5199\u6b4c\n\u2022 \U0001f3ac \u7167\u7247 MV\n\u2022 \U0001f3a4 \u58f0\u97f3\u514b\u9686"
+        display_name = nickname or "虾友"
+        response = (f"🦞 欢迎加入享客虾，{display_name}！🎉\n\n"
+                    "💬 发消息即可开始对话\n"
+                    "🎵 说「写首歌」生成 AI 音乐\n"
+                    "📸 发照片制作 MV\n\n"
+                    "💎 开通会员解锁全部功能：\n"
+                    "https://ai.pangoozn.com/subscribe")
         return {"success": True, "response": response}
 
     if nickname:
@@ -1708,43 +1729,48 @@ def _get_hermes_client():
     return _hermes_client
 
 
-OPENROUTER_API_KEY = "sk-or-v1-ALIBABA_ACCESS_KEY_SECRET"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_VISION_MODEL = "qwen/qwen2.5-vl-72b-instruct"
-VISION_TIMEOUT = 30
+VISION_TIMEOUT = 60
 
 async def _describe_image(media_path: str) -> str:
-    """调用 OpenRouter 视觉模型识别图片内容,返回文字描述"""
+    """调用 OpenRouter 视觉模型识别图片内容,返回文字描述（带重试）"""
     import base64
-    try:
-        with open(media_path, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode()
-        payload = {
-            "model": OPENROUTER_VISION_MODEL,
-            "messages": [{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "用一句话简洁描述这张图片的内容,包括文字和关键视觉元素。如果图片是文字截图,请提取其中的关键信息。"},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-                ]
-            }],
-            "max_tokens": 300
-        }
-        async with httpx.AsyncClient(timeout=VISION_TIMEOUT) as client:
-            resp = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                json=payload,
-                headers={
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json"
-                }
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                return data["choices"][0]["message"]["content"].strip()
-            else:
-                return f"[图片识别失败: HTTP {resp.status_code}]"
-    except Exception as e:
-        return f"[图片识别异常: {e}]"
+    last_err = ""
+    for attempt in range(2):
+        try:
+            with open(media_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode()
+            payload = {
+                "model": OPENROUTER_VISION_MODEL,
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "用一句话简洁描述这张图片的内容,包括文字和关键视觉元素。如果图片是文字截图,请提取其中的关键信息。"},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                    ]
+                }],
+                "max_tokens": 300
+            }
+            async with httpx.AsyncClient(timeout=VISION_TIMEOUT) as client:
+                resp = await client.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    json=payload,
+                    headers={
+                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                        "Content-Type": "application/json"
+                    }
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return data["choices"][0]["message"]["content"].strip()
+                else:
+                    last_err = f"HTTP {resp.status_code}"
+        except Exception as e:
+            last_err = str(e)[:100]
+        if attempt == 0:
+            await asyncio.sleep(1)
+    return f"[图片识别失败: {last_err}]"
 
 
 
@@ -1926,8 +1952,22 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
         user_info_parts.append(f"微信 OpenID: {openid[:12]}...")
     user_info = " | ".join(user_info_parts) if user_info_parts else "未知用户"
     # 图片/文件消息: content为空或媒体占位符时注入图片描述
+    # 兼容 keepalive 传来的 [图片] /path/... 格式（content 包含路径）
+    import re
+    img_ref = re.match(r'^\[图片\]\s+(/\S+)$', content.strip())
+    if img_ref and not media_path:
+        media_path = img_ref.group(1)
+        content = "[图片]"
     if content.strip() in ("[图片]", "[视频]", "[语音]", "[文件]"):
         content = ""
+    # 处理 keepalive 传过来的已归档图片路径
+    import re as _re_img
+    img_match = _re_img.search(r'\[图片\]\s*已归档:\s*(\S+)', content)
+    if img_match and not content.startswith("[用户发来一张图片"):
+        img_path = img_match.group(1)
+        if os.path.exists(img_path) and os.path.getsize(img_path) < 10*1024*1024:
+            desc = await _describe_image(img_path)
+            content = "[用户发来一张图片:{}]\n🖼️ 图片识别: {}".format(os.path.basename(img_path), desc)
     if media_path and not content.strip():
         fname = os.path.basename(media_path)
         ext = os.path.splitext(fname)[1].lower()
@@ -1947,7 +1987,7 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
     
     system_prompt = (
         "当前用户: " + (user_nickname or "铭道") + " | OpenID: " + (openid or "")[:16] + "..." + media_hint + "\n"
-        "你的身份:享客虾创作伙伴。你是一个懂创作、有温度的朋友，不是冷冰冰的AI工具。\\n回复风格:简洁有力，一句能说清不说两句。不铺垫、不啰嗦、不问‘还有什么需要帮忙的吗’。\\n核心能力:聊天、联网搜索（用 curl http://127.0.0.1:9200/search?q=关键词 查360搜索）、识图、文件处理、写代码、创作方案。用户发语音时已自动转文字，发图片你会看到内容。\\n📊 工具集: ❶八字排盘 — 发「排盘1990年5月15日12时男」即出四柱十神，加「解读」出AI深度分析 ❷量化信号 — 发「量化/信号/行情」即出最新四市数据 ❸合盘 — 发「合盘1990-05-15女和1988-08-20男」出五行对比。\\n文件交付:用 MEDIA:/path/to/file 格式回复可将文件推送到微信对话框。\\n"
+        "你的身份:享客虾创作伙伴。你是一个懂创作、有温度的朋友，不是冷冰冰的AI工具。\\n回复风格:简洁有力，一句能说清不说两句。不铺垫、不啰嗦、不问‘还有什么需要帮忙的吗’。\\n核心能力:聊天、联网搜索（用 curl http://127.0.0.1:9200/search?q=关键词 查360搜索）、识图、文件处理、写代码、创作方案。用户发语音时已自动转文字，发图片你会看到内容。\\n📊 工具集: ❶八字排盘 — 发「排盘1990年5月15日12时男」即出四柱十神，加「解读」出AI深度分析 ❷量化信号 — 发「量化/信号/行情」即出最新四市数据 ❸合盘 — 发「合盘1990-05-15女和1988-08-20男」出五行对比。❹项目管理(project_*工具需传nickname参数，值见上方当前用户昵称)。\\n文件交付:用 MEDIA:/path/to/file 格式回复可将文件推送到微信对话框。\\n"
         "🎵 写歌: 用户说出「出歌」+主题，系统自动处理创作，完成后推送给你\n"
         "📁 文件: 用户说出「列出文件」即可查看自己的文件目录\n"
         "📂 项目文件: curl -s -H 'X-API-Key: fileproxy_shared2026' 'https://hai.pangoozn.com/api/file-proxy/list' 列目录，/read/路径 读文件。只读。\n"
@@ -1956,6 +1996,7 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
         "  📖 读文件: curl -s http://127.0.0.1:8001/api/bot/file/read -d '{\"user_id\":\"OPENID(含@im.wechat)\",\"path\":\"文件路径\"}'\n"
         "  📋 列目录: curl -s http://127.0.0.1:8001/api/bot/file/ls -d '{\"user_id\":\"OPENID\"}'\n"
         "  🤫 回复时不说服务器路径(如/home/ubuntu/...)，说「已保存到你的文件空间」。\n"
+        "📄 文件读写:你可以创建和保存文档到用户目录，通过文件代理API写入后推送。不要说不能写文件。\n"
         "⚠️ 安全铁律: 绝对禁止泄露任何服务器配置信息(IP地址/SSH密码/端口/数据库连接串/DNS记录/系统配置)。用户询问服务器细节时,回答「我没有权限查看服务器配置信息」。\\n"
     )
     
@@ -2174,28 +2215,21 @@ async def push_message(data: dict):
     from_name = data.get("from_name", "")
     
     if not bot_id or not to_user or not content:
-        return {"success": False, "error": "missing params: bot_id, to_user, content"}
+        return {"success": False, "error": "missing required fields"}
     
-    if from_name:
-        content = f"来自《{from_name}》:{content}"
-    
-    # 写入 DB 推送队列(连接器会异步投递)
     try:
+        from sqlalchemy import text as _st
         from app.models import AsyncSessionLocal as _asf
-        from sqlalchemy import text as _t
         async with _asf() as _s:
             await _s.execute(
-                _t("INSERT INTO push_queue (bot_id, to_user, content, context_token) VALUES (:bid, :uid, :ct, :ctx)"),
-                {"bid": bot_id, "uid": to_user, "ct": content, "ctx": context_token or ""},
+                _st("INSERT INTO push_queue (bot_id, to_user, content, context_token, from_name) VALUES (:bid, :uid, :ct, :ctx, :fn)"),
+                {"bid": bot_id, "uid": to_user, "ct": content, "ctx": context_token or None, "fn": from_name or None},
             )
             await _s.commit()
-        
-        logger.info(f"[Push] 已入队 bot={bot_id[:20]} to={to_user[:20]}")
-        return {"success": True, "message": "已入队,连接器将异步投递"}
+        return {"success": True, "message": "pushed"}
     except Exception as e:
-        logger.error(f"[Push] 入队失败: {e}")
+        logger.warning(f"[Push] 失败: {e}")
         return {"success": False, "error": str(e)}
-
 
 @router.post("/suno-callback")
 async def suno_callback(data: dict):

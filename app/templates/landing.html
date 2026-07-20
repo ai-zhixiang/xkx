@@ -145,14 +145,23 @@ body{
     document.getElementById('qrSection').classList.add('show');
     document.getElementById('qrImg').src = '/api/bot/qrcode/image?t=' + Date.now();
   }
+  // 捕获推广码 ref 参数 → 存 localStorage
+  var _p = new URLSearchParams(location.search);
+  var _ref = _p.get('ref') || '';
+  if (_ref && _ref.length >= 4) {
+    try { localStorage.setItem('referral_code', _ref); } catch(e){}
+  }
 })();
 
 function addBot() {
+  // 推广码带入 bind 页
+  var _ref = '';
+  try { _ref = localStorage.getItem('referral_code') || ''; } catch(e){}
+  var _qs = _ref ? '?ref=' + encodeURIComponent(_ref) : '';
+
   if (/MicroMessenger/i.test(navigator.userAgent)) {
-    // 微信内 → 跳转绑定页（已有扫码激活流程）
-    window.location.href = '/xkx/bind';
+    window.location.href = '/xkx/bind' + _qs;
   } else {
-    // 非微信 → 展示二维码
     document.getElementById('qrSection').classList.add('show');
     document.getElementById('qrSection').scrollIntoView({behavior:'smooth', block:'center'});
   }
