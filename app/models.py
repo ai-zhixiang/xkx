@@ -3,12 +3,15 @@ import enum
 from datetime import datetime, date
 
 from sqlalchemy import (Column, Integer, String, Boolean, Date, DateTime,
-                        BigInteger, Text, ForeignKey, JSON, Enum, create_engine)
+                        BigInteger, Text, ForeignKey, JSON, Enum, create_engine,
+                        UniqueConstraint, Index)
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.orm import mapped_column
 
 import os
+import uuid
 
 DATABASE_URL = os.getenv("DATABASE_URL",
     "postgresql+asyncpg://weclawd:weclawd_pass@localhost:5432/weclawd")
@@ -179,6 +182,116 @@ class ChannelBinding(Base):
     is_active = Column(Boolean, default=True)
 
 
+
+
+# ── 微侠令 Order ──
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(String(128), nullable=False)
+    title = Column(String(200), nullable=False)
+    content = Column(Text, nullable=True)
+    status = Column(String(20), nullable=False, default="draft")
+    source_text = Column(Text, nullable=True)
+    source_channel = Column(String(20), nullable=True)
+    execute_node = Column(String(50), nullable=True)
+    node_config = Column(JSON, nullable=True)
+    result = Column(JSON, nullable=True)
+    error_message = Column(Text, nullable=True)
+    parent_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True)
+    progress = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.now)
+    confirmed_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        Index("idx_orders_user_status", "user_id", "status"),
+        Index("idx_orders_created", "user_id", "created_at"),
+        Index("idx_orders_status", "status"),
+    )
+
+
+class OrderChannel(Base):
+    __tablename__ = "order_channels"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    channel = Column(String(20), nullable=False)
+    last_status = Column(String(20), nullable=False)
+    notified_at = Column(DateTime, nullable=True)
+    read_at = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("order_id", "channel"),
+        Index("idx_oc_order", "order_id"),
+    )
+
+
+class BindSession(Base):
+    __tablename__ = "bind_sessions"
+
+    session_id = Column(String(32), primary_key=True)
+    openid = Column(String(128), nullable=False)
+    nickname = Column(String(64), nullable=False, default="")
+    created_at = Column(DateTime, default=datetime.now)
+    user_id = Column(String(128), nullable=True)  # iLink user_id, filled after scan
+    bot_id = Column(String(128), nullable=True)   # iLink bot_id, filled after scan
+    status = Column(String(20), nullable=False, default="pending")  # pending | bound
+
+
+# ── 推广返佣 Referral ──
+
+class ReferralCode(Base):
+    """推广码"""
+    __tablename__ = "referral_codes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    subscriber_id = Column(Integer, ForeignKey("subscribers.id"), nullable=False)
+    code = Column(String(20), nullable=False, unique=True, index=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+    subscriber = relationship("Subscriber")
+
+
+class ReferralRelation(Base):
+    """推广关系链"""
+    __tablename__ = "referral_relations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    referee_openid = Column(String(128), nullable=False, unique=True, index=True)
+    referrer_subscriber_id = Column(Integer, ForeignKey("subscribers.id"), nullable=False)
+    referrer_openid = Column(String(128), nullable=False)
+    level = Column(Integer, nullable=False, default=1)  # 1=一级, 2=二级
+    referee_subscriber_id = Column(Integer, ForeignKey("subscribers.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+    referrer = relationship("Subscriber", foreign_keys=[referrer_subscriber_id])
+
+
+class ReferralCommission(Base):
+    """推广佣金记录"""
+    __tablename__ = "referral_commissions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    referrer_subscriber_id = Column(Integer, ForeignKey("subscribers.id"), nullable=False)
+    referee_subscriber_id = Column(Integer, ForeignKey("subscribers.id"), nullable=False)
+    order_id = Column(Integer, ForeignKey("sub_orders.id"), nullable=False)
+    level = Column(Integer, nullable=False, default=1)  # 1=一级15%, 2=二级5%
+    order_amount = Column(Integer, nullable=False)  # 订单金额（分）
+    commission_rate = Column(Integer, nullable=False)  # 百分比（如 15 表示 15%）
+    points_awarded = Column(Integer, nullable=False)  # 奖励虾点数
+    status = Column(String(20), nullable=False, default="pending")  # pending / paid / cancelled
+    settled_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+    referrer = relationship("Subscriber", foreign_keys=[referrer_subscriber_id])
+    referee = relationship("Subscriber", foreign_keys=[referee_subscriber_id])
+    order = relationship("SubOrder")
+
+
 # ── 数据库初始化 ──
 
 engine = None
@@ -195,3 +308,4 @@ async def init_db():
 async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
+'EOF'

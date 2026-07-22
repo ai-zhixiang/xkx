@@ -31,7 +31,7 @@ WX_MCHID = os.getenv('WXPAY_MCHID', '')
 WX_API_V3_KEY = os.getenv('WXPAY_API_V3_KEY', '')
 WX_SERIAL_NO = os.getenv('WXPAY_MCH_SERIAL_NO', '')
 WX_PRIVATE_KEY_PATH = os.getenv('WXPAY_PRIVATE_KEY_PATH', '/etc/wechat/apiclient_key.pem')
-WX_NOTIFY_URL = os.getenv('WXPAY_NOTIFY_URL', 'https://hai.pangoozn.com/xkx/api/pay/notify')
+WX_NOTIFY_URL = os.getenv('WXPAY_NOTIFY_URL', 'https://ai.pangoozn.com/api/pay/notify')
 WXPAY_ENABLED = os.getenv('WXPAY_ENABLED', 'true').lower() in ('true', '1', 'yes')
 
 
@@ -86,7 +86,7 @@ async def create_order(data: CreateOrderRequest, db: AsyncSession = Depends(get_
 
     # 用户 - 仅查找或创建占位记录，不更新状态/点数
     result = await db.execute(
-        select(Subscriber).options(selectinload(Subscriber.plan))
+        select(Subscriber)
         .where(Subscriber.openid == data.openid)
     )
     sub = result.scalar_one_or_none()
@@ -224,7 +224,7 @@ async def create_order(data: CreateOrderRequest, db: AsyncSession = Depends(get_
     body = {
         'appid': WX_APPID,
         'mchid': WX_MCHID,
-        'description': f'享客虾-{plan.name}',
+        'description': f'享客虾-{plan.name.replace(chr(0x1f99e),chr(0x200d) if False else chr(0x200b))}',
         'out_trade_no': out_trade_no,
         'notify_url': WX_NOTIFY_URL,
         'amount': {'total': plan.price, 'currency': 'CNY'},
@@ -353,6 +353,16 @@ async def pay_notify(request: Request, db: AsyncSession = Depends(get_db)):
             sub.xiake_points = min((sub.xiake_points or 0) + monthly_points, max_points)
 
         await db.commit()
+
+        # 推广返佣结算
+        try:
+            async with httpx.AsyncClient(timeout=5) as _ref:
+                await _ref.post(
+                    "http://127.0.0.1:8001/api/referral/settle",
+                    params={"order_id": order_id}
+                )
+        except Exception:
+            pass  # 返佣不影响主流程
 
         # 推 Bot 确认消息
         if sub and order:

@@ -10,11 +10,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.models import init_db, AsyncSessionLocal, Plan
+from app.models import init_db, Plan
 from app.routes.admin import router as admin_router
 from app.routes.wechat import router as wechat_router
 from app.routes.public import router as public_router
@@ -27,6 +27,10 @@ from app.routes.documents import router as documents_router
 from app.routes.analytics import router as analytics_router
 from app.routes.bot_gateway import router as bot_gateway_router
 from app.routes.resources import router as resources_router
+from app.routes.unified import router as unified_router
+from app.routes.poster import router as poster_router
+from app.routes.referral import router as referral_router
+from app.routes.haica import router as haica_router
 from app.scheduler import start_scheduler
 from app.bot.qqbot import run_qq_bot
 
@@ -37,8 +41,8 @@ async def lifespan(app: FastAPI):
     await init_db()
     print("[享客虾] 数据库就绪")
 
-    import app.models
-    async with app.models.AsyncSessionLocal() as session:
+    from app.models import AsyncSessionLocal
+    async with AsyncSessionLocal() as session:
         from sqlalchemy import select, func
         result = await session.execute(select(func.count(Plan.id)))
         if result.scalar() == 0:
@@ -81,6 +85,10 @@ app.include_router(documents_router, prefix='/api')
 app.include_router(analytics_router, prefix='/api/analytics')
 app.include_router(bot_gateway_router)  # 前缀已在 router 中定义
 app.include_router(resources_router)
+app.include_router(unified_router)
+app.include_router(poster_router)
+app.include_router(referral_router)
+app.include_router(haica_router)
 app.mount('/static', StaticFiles(directory='app/static'), name='static')
 app.mount('/agents', StaticFiles(directory='/home/ubuntu/weclaw-1/agents'), name='agents')  # v0.5.0: 用户文件服务
 
@@ -89,9 +97,74 @@ app.mount('/agents', StaticFiles(directory='/home/ubuntu/weclaw-1/agents'), name
 async def landing():
     with open('app/templates/landing.html', 'r', encoding='utf-8') as f:
         return f.read()
+
+
+@app.post('/api/user/profile', response_class=JSONResponse)
+async def update_user_profile(data: dict):
+    """OAuth 回调后保存微信昵称和头像到 subscribers"""
+    import asyncpg
+    openid = data.get('openid', '')
+    nickname = data.get('nickname', '')
+    avatar = data.get('avatar', '')
+    if not openid or not nickname:
+        return {"ok": False, "error": "缺少 openid 或 nickname"}
+    conn = await asyncpg.connect("postgresql://lucky:lucky_pass@localhost:5432/weclawd")
+    try:
+        # 更新 subscribers
+        await conn.execute(
+            "UPDATE subscribers SET nickname = $1, avatar_url = COALESCE(NULLIF($2,''), avatar_url) WHERE openid = $3",
+            nickname, avatar, openid
+        )
+        # 同步到 channel_bindings
+        await conn.execute(
+            "UPDATE channel_bindings SET nickname = $1 WHERE openid = $2 AND (nickname IS NULL OR nickname = '' OR nickname LIKE '虾友%' OR nickname LIKE '用户%')",
+            nickname, openid
+        )
+        # 同步到 bot_accounts
+        cb_rows = await conn.fetch(
+            "SELECT channel_user_id FROM channel_bindings WHERE openid = $1 AND channel_user_id IS NOT NULL",
+            openid
+        )
+        for cb_row in cb_rows:
+            cuid = cb_row["channel_user_id"]
+            if cuid and "@" in cuid:
+                cuid_base = cuid.split("@")[0]
+                await conn.execute(
+                    "UPDATE bot_accounts SET nickname = $1 WHERE (user_id = $2 OR user_id LIKE $3) AND is_active = true",
+                    nickname, cuid, cuid_base + "@%"
+                )
+        return {"ok": True}
+    finally:
+        await conn.close()
 @app.get('/bind', response_class=HTMLResponse)
-async def bind_page(sync: str = '', token: str = '', openid: str = '', nickname: str = '', avatar: str = ''):
+async def bind_page(sync: str = '', token: str = '', openid: str = '', nickname: str = '', avatar: str = '', ref: str = ''):
     html = open('app/templates/bind.html', 'r', encoding='utf-8').read()
+
+    # 如果有 ref 参数，注入动态 OG 标签（带上推荐人昵称）
+    og_inject = ''
+    if ref:
+        try:
+            import httpx
+            r = httpx.get(f'http://127.0.0.1:8001/promo/referral/info?code={ref}', timeout=3)
+            if r.status_code == 200:
+                data = r.json()
+                ref_nick = data.get('nickname', '虾客')
+                og_inject = (
+                    '<meta property="og:title" content="享客虾-' + ref_nick + '邀您微信养个虾" />\n'
+                    '<meta property="og:description" content="写歌、做贺卡、写笔记、看行情，就是聊天这么简单" />\n'
+                    '<meta property="og:image" content="https://ai.pangoozn.com/promo/referral/og-image?code=' + ref + '" />\n'
+                    '<meta property="og:image:width" content="1200" />\n'
+                    '<meta property="og:image:height" content="630" />\n'
+                    '<meta property="og:url" content="https://ai.pangoozn.com/xkx/bind?ref=' + ref + '" />\n'
+                    '<meta property="og:type" content="website" />\n'
+                    '<meta name="wechat:card" content="summary_large_image" />'
+                )
+        except Exception:
+            pass
+
+    if og_inject:
+        html = html.replace('</head>', og_inject + '</head>')
+
     if openid and nickname:
         nick_safe = nickname.replace("'", "\\'").replace('<', '&lt;')
         av_safe = avatar.replace("'", "\\'") if avatar else ''
@@ -127,14 +200,8 @@ async def admin_page():
 
 @app.get("/activate", response_class=HTMLResponse)
 async def activate_page():
-    with open("app/templates/activate.html", "r", encoding="utf-8") as f:
-        html = f.read()
-        return HTMLResponse(html)
+    return RedirectResponse(url="/subscribe")
 
-@app.get('/admin', response_class=HTMLResponse)
-async def admin_page():
-    with open('app/templates/admin.html', 'r', encoding='utf-8') as f:
-        return f.read()
 
 
 @app.get('/go/s/{openid}')
@@ -177,7 +244,8 @@ async def oauth_callback(code: str = '', state: str = '', from_url: str = ''):
             _svc_openid = td.get('openid', '')
             at = td.get('access_token', '')
             
-            # ── 2. 用 snsapi_userinfo 拿昵称 ──
+            # ── 2. 用 snsapi_userinfo 拿昵称 + 头像 ──
+            _headimgurl = ''
             if at:
                 ur = await _c.get(
                     f"https://api.weixin.qq.com/sns/userinfo"
@@ -186,6 +254,8 @@ async def oauth_callback(code: str = '', state: str = '', from_url: str = ''):
                 ud = ur.json()
                 if ud.get('nickname'):
                     _nickname = ud['nickname']
+                if ud.get('headimgurl'):
+                    _headimgurl = ud['headimgurl']
     except:
         pass
     
@@ -212,6 +282,20 @@ async def oauth_callback(code: str = '', state: str = '', from_url: str = ''):
         except:
             pass
     
+    # ── 4. 存头像到 subscribers（供海报生成使用） ──
+    if _svc_openid and _headimgurl:
+        try:
+            from app.models import AsyncSessionLocal
+            from sqlalchemy import text as sa_text
+            async with AsyncSessionLocal() as _db3:
+                await _db3.execute(
+                    sa_text("UPDATE subscribers SET avatar_url = :av WHERE openid = :oid"),
+                    {"av": _headimgurl, "oid": _svc_openid}
+                )
+                await _db3.commit()
+        except:
+            pass
+
     # ── 4. 昵称：优先微信拿到的，其次 DB，最后兜底 ──
     if not _nickname:
         try:
@@ -293,7 +377,93 @@ async def subscribe_page(openid: str = '', nickname: str = '', plan: str = ''):
 
 
 @app.get('/activate', response_class=HTMLResponse)
-async def activate_page():
-    with open('app/templates/activate.html', 'r', encoding='utf-8') as f:
-        html = f.read()
-        return HTMLResponse(html)
+async def activate_page_dup():
+    return RedirectResponse(url="/subscribe")
+
+@app.get('/ai-compose', response_class=HTMLResponse)
+async def ai_compose_page():
+    with open('/home/ubuntu/card-test/ai-compose.html', 'r', encoding='utf-8') as f:
+        return HTMLResponse(f.read())
+
+
+@app.post('/api/bot/push-write-song', response_class=JSONResponse)
+async def push_write_song(data: dict):
+    """已绑定用户回访时，推一条回归消息到 Bot"""
+    import asyncpg, httpx
+    openid = data.get('openid', '')
+    nickname = data.get('nickname', '') or '虾友'
+    if not openid:
+        return {"ok": False, "error": "缺少 openid"}
+    conn = await asyncpg.connect("postgresql://lucky:lucky_pass@localhost:5432/weclawd")
+    try:
+        row = await conn.fetchrow(
+            "SELECT channel_user_id FROM channel_bindings WHERE openid=$1 AND is_active=true LIMIT 1",
+            openid
+        )
+        if not row:
+            return {"ok": False, "error": "未找到绑定记录"}
+        cuid = row["channel_user_id"]
+        # channel_bindings 存的 user_id 不带后缀，bot_accounts 带 @im.wechat
+        br = await conn.fetchrow(
+            "SELECT bot_id FROM bot_accounts WHERE (user_id=$1 OR user_id LIKE $2) AND is_active=true LIMIT 1",
+            cuid, cuid + "@%"
+        )
+        if not br:
+            return {"ok": False, "error": "未找到 Bot"}
+        bot_id = br["bot_id"]
+        # 推消息时需要加 @im.wechat 后缀
+        to_user = cuid + "@im.wechat" if "@" not in cuid else cuid
+        async with httpx.AsyncClient(timeout=5) as hc:
+            kr = await hc.post("http://127.0.0.1:9100/api/send", json={
+                "bot_id": bot_id,
+                "to_user": to_user,
+                "text": f"🦞 欢迎回来，{nickname}！\n\n享客虾就在你身边 🎵\n回复「帮助」看看我都能做什么"
+            })
+            if kr.status_code == 200:
+                return {"ok": True}
+            else:
+                return {"ok": False, "error": f"push status={kr.status_code}"}
+    finally:
+        await conn.close()
+
+@app.get('/player/promo-haica', response_class=HTMLResponse)
+async def promo_haica_player():
+    with open('app/templates/player_haica.html', 'r', encoding='utf-8') as f:
+        return HTMLResponse(f.read())
+
+@app.get("/xiakexing", response_class=HTMLResponse)
+async def xiakexing_page():
+    with open("app/templates/xiakexing.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(f.read())
+
+
+@app.get('/api/wechat/jsconfig')
+async def wechat_jsconfig(url: str = ''):
+    import time, random, string, hashlib, httpx
+    appid = os.getenv('WECHAT_APPID', 'wx79c1f7db6d290510')
+    secret = os.getenv('WECHAT_APPSECRET', '')
+    if not secret:
+        return JSONResponse({'errcode': -1, 'errmsg': 'no secret'})
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.get('https://api.weixin.qq.com/cgi-bin/token', params={
+                'grant_type': 'client_credential', 'appid': appid, 'secret': secret
+            })
+            token_data = r.json()
+            access_token = token_data.get('access_token', '')
+            if not access_token:
+                return JSONResponse({'errcode': -1, 'errmsg': 'token failed'})
+            r2 = await c.get('https://api.weixin.qq.com/cgi-bin/ticket/getticket', params={
+                'access_token': access_token, 'type': 'jsapi'
+            })
+            ticket_data = r2.json()
+            ticket = ticket_data.get('ticket', '')
+            if not ticket:
+                return JSONResponse({'errcode': -1, 'errmsg': 'ticket failed'})
+    except Exception as e:
+        return JSONResponse({'errcode': -1, 'errmsg': str(e)})
+    nonce = ''.join(random.choices(string.ascii_lowercase + string.digits, k=16))
+    ts = int(time.time())
+    sign_str = f'jsapi_ticket={ticket}&noncestr={nonce}&timestamp={ts}&url={url}'
+    signature = hashlib.sha1(sign_str.encode()).hexdigest()
+    return {'appId': appid, 'timestamp': ts, 'nonceStr': nonce, 'signature': signature}
