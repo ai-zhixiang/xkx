@@ -4,6 +4,7 @@ v0.1：JSAPI 支付 · 复用智享家商户号
 """
 import os
 import json
+import re
 import time
 import hashlib
 import string
@@ -221,6 +222,10 @@ async def create_order(data: CreateOrderRequest, db: AsyncSession = Depends(get_
     out_trade_no = f'XKX{order.id}{int(time.time())}'
     order.out_trade_no = out_trade_no
     await db.commit()
+    # 去 emoji：description 只能含 UTF-8 字符，但微信支付拒 emoji
+    plan_tag = plan.name.replace('🦞', '虾').replace('⭐', '').replace('🔥', '')
+    plan_tag = re.sub(r'[\U0001F300-\U0001FFFF\U00020000-\U0002FFFF]', '', plan_tag).strip()
+
     body = {
         'appid': WX_APPID,
         'mchid': WX_MCHID,
@@ -232,6 +237,7 @@ async def create_order(data: CreateOrderRequest, db: AsyncSession = Depends(get_
     }
 
     body_str = json.dumps(body, ensure_ascii=False, separators=(',', ':'))
+    logger.info(f"[支付] 下单 body={body_str[:300]}")
 
     # 签名
     nonce = _gen_nonce()

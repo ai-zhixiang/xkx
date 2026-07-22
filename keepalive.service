@@ -1,0 +1,15 @@
+[Unit]
+Description=keepalive - 享客虾 Bot 保活层 (iLink长轮询+暗号秒回)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/weclaw-keepalive
+ExecStart=/home/ubuntu/weclaw-keepalive/.venv/bin/python keepalive_service.py
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
