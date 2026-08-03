@@ -19,6 +19,7 @@ POINTS_PRICING = {
     "chat": 1,
     "make_card": 2,
     "ai_song": 50,
+    "mv": 10,
     "rvc": 30,
     "vision": 2,
 }
@@ -249,6 +250,7 @@ async def check_and_deduct_async(db, openid: str, action: str = "chat",
                 "VALUES (:sid, 'consume', :amt, :bal, :desc)"),
         {"sid": sub_id, "amt": -need, "bal": new_balance, "desc": action}
     )
+    await db.commit()  # 必须显式提交，否则扣费不落库
     return {"ok": True, "remaining": new_balance, "need": need, "message": ""}
 
 
@@ -270,6 +272,7 @@ async def add_points_async(db, openid: str, amount: int,
                 "VALUES (:sid, :tx, :amt, :bal, :desc)"),
         {"sid": r[1], "tx": tx_type, "amt": amount, "bal": r[0], "desc": description}
     )
+    await db.commit()  # 必须显式提交，否则加虾点不落库
     return {"ok": True, "balance_after": r[0]}
 
 

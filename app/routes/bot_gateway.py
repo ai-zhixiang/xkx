@@ -316,6 +316,47 @@ async def _send_bind_welcome(channel_user_id: str, nickname: str):
         logger.warning(f"[绑定欢迎] 发送失败: {e}")
 
 
+async def _get_member_line(openid: str) -> str:
+    """根据公众号 openid 查会员状态，返回欢迎语里的会员行。
+    兼容传入 channel_user_id（带 @im.wechat 后缀）的情况：自动反查 channel_bindings 里的真实 openid。
+    """
+    if not openid:
+        return "💎 开通会员解锁全部功能：\nhttps://ai.pangoozn.com/subscribe"
+    try:
+        from app.models import AsyncSessionLocal as _asf
+        from sqlalchemy import text as _t
+        from datetime import date as _date
+        async with _asf() as _s:
+            _oid = openid
+            # 若传入的是 channel_user_id（@im.wechat 后缀）→ 反查真实 openid
+            if "@im.wechat" in str(openid):
+                _bare = str(openid).split("@")[0]
+                _r2 = await _s.execute(
+                    _t("SELECT openid FROM channel_bindings WHERE channel_type='ilink' "
+                       "AND (channel_user_id = :cuid OR channel_user_id = :bare) "
+                       "AND openid NOT LIKE '%@im.wechat' AND openid NOT LIKE '%@tmp' "
+                       "ORDER BY bound_at DESC LIMIT 1"),
+                    {"cuid": openid, "bare": _bare},
+                )
+                _o2 = _r2.scalar_one_or_none()
+                if _o2:
+                    _oid = _o2
+            row = await _s.execute(
+                _t("SELECT s.status, s.expires_at, p.name as plan_name "
+                   "FROM subscribers s LEFT JOIN plans p ON s.plan_id = p.id "
+                   "WHERE s.openid = :oid"),
+                {"oid": _oid},
+            )
+            r = row.fetchone()
+            if r and str(r[0]).upper() in ("ACTIVE", "TRIAL") and r[1] and r[1] >= _date.today():
+                remain = (r[1] - _date.today()).days
+                return (f"📅 会员到期：{r[1]}（剩余 {remain} 天）\n"
+                        f"👉 续费：https://ai.pangoozn.com/subscribe")
+    except Exception as e:
+        logger.warning(f"[会员行] 查询失败 openid={openid[:15]}: {e}")
+    return "💎 开通会员解锁全部功能：\nhttps://ai.pangoozn.com/subscribe"
+
+
 # ===== Endpoints =====
 
 @router.post("/register", response_model=BotRegisterResponse)
@@ -1426,13 +1467,13 @@ async def bot_webhook(data: dict):
             logger.info(f"[自动绑定] 用户 {channel_user_id[:20]} 已自动绑定")
         except Exception as e:
             logger.warning(f"[自动绑定] 失败: {e}")
-        # 发送欢迎消息 + 开通页面链接
+        # 发送欢迎消息 + 会员状态
+        _ml = await _get_member_line(channel_user_id)
         response = ("🦞 欢迎加入享客虾！🎉\n\n"
                     "💬 发消息即可开始对话\n"
                     "🎵 说「写首歌」生成 AI 音乐\n"
                     "📸 发照片制作 MV\n\n"
-                    "💎 开通会员解锁全部功能：\n"
-                    "https://ai.pangoozn.com/subscribe")
+                    + _ml)
         return {"success": True, "response": response}
     
     # 已绑定 → 注入用户身份
@@ -1452,12 +1493,12 @@ async def bot_webhook(data: dict):
             )
             await _s.commit()
         display_name = nickname or "虾友"
+        _ml = await _get_member_line(openid)
         response = (f"🦞 欢迎加入享客虾，{display_name}！🎉\n\n"
                     "💬 发消息即可开始对话\n"
                     "🎵 说「写首歌」生成 AI 音乐\n"
                     "📸 发照片制作 MV\n\n"
-                    "💎 开通会员解锁全部功能：\n"
-                    "https://ai.pangoozn.com/subscribe")
+                    + _ml)
         return {"success": True, "response": response}
 
     if nickname:
@@ -1565,9 +1606,16 @@ async def _check_binding(channel_type: str, channel_user_id: str) -> dict:
         from app.models import AsyncSessionLocal as async_session_factory
         from sqlalchemy import text as sa_text
         async with async_session_factory() as session:
+            # ★ 兼容两种存储格式：channel_user_id 可能带 @im.wechat 后缀也可能不带
+            #   iLink 消息的 from_user_id 带后缀，但历史绑定记录有不带后缀的 → 精确匹配会失败
+            #   导致每次消息都被当成新用户触发自动绑定欢迎（吞掉用户消息）
+            _bare = channel_user_id.split("@")[0]
             row = await session.execute(
-                sa_text("SELECT openid, nickname, welcomed, user_account_id FROM channel_bindings WHERE channel_type = :ct AND channel_user_id = :cuid"),
-                {"ct": channel_type, "cuid": channel_user_id},
+                sa_text("SELECT openid, nickname, welcomed, user_account_id FROM channel_bindings "
+                        "WHERE channel_type = :ct AND (channel_user_id = :cuid OR channel_user_id = :bare) "
+                        "ORDER BY CASE WHEN openid NOT LIKE '%@im.wechat' AND openid NOT LIKE '%@tmp' THEN 0 ELSE 1 END, "
+                        "(channel_user_id = :cuid) DESC, bound_at DESC LIMIT 1"),
+                {"ct": channel_type, "cuid": channel_user_id, "bare": _bare},
             )
             r = row.fetchone()
             if r:
@@ -1689,10 +1737,14 @@ async def _route_to_ai(bot_id: str, user_id: str, content: str, user_nickname: s
         from app.models import AsyncSessionLocal as _asf2
         from sqlalchemy import text as _st
         async with _asf2() as _s:
-            # map iLink user_id to openid via channel_bindings
+            # map iLink user_id to openid via channel_bindings（排除脏 openid 记录）
+            _uid_base = str(user_id).split("@")[0]
             row = await _s.execute(
-                _st("SELECT s.openid FROM subscribers s JOIN channel_bindings c ON s.openid=c.openid WHERE c.channel_user_id=:uid AND s.status='ACTIVE' AND s.expires_at > NOW() LIMIT 1"),
-                {"uid": user_id}
+                _st("SELECT s.openid FROM subscribers s JOIN channel_bindings c ON s.openid=c.openid "
+                    "WHERE (c.channel_user_id = :uid OR c.channel_user_id = :uid_base) "
+                    "AND c.openid NOT LIKE '%@im.wechat' AND c.openid NOT LIKE '%@tmp' "
+                    "AND s.status='ACTIVE' AND s.expires_at > NOW() LIMIT 1"),
+                {"uid": user_id, "uid_base": _uid_base}
             )
             is_member = row.fetchone() is not None
     except:
@@ -1707,9 +1759,12 @@ async def _route_to_ai(bot_id: str, user_id: str, content: str, user_nickname: s
             all_cases = cases.get("cards", []) + cases.get("songs", [])
             if all_cases:
                 c = random.choice(all_cases)
-                typ = "\U0001f3b4" if "image" in c else "\U0001f3b5"
-                reply += chr(10)*2 + '---' + chr(10) + typ + ' ' + c.get('title','') + chr(10) + '   ' + c.get('desc','') + chr(10) + '   \U0001f449 ' + c.get('link','') + chr(10)
-                reply += "\n\U0001f4ac \u56de\u590d\u300c\u8f6c\u4eba\u5de5\u300d\u8054\u7cfb\u771f\u4eba\u5ba2\u670d"
+                is_card = "image" in c
+                typ = "🎴" if is_card else "🎵"
+                reply += chr(10)*2 + '—' + chr(10) + '🦞 享客虾 AI创作案例' + chr(10) + '━━━━━━━━' + chr(10)
+                reply += typ + ' ' + c.get('title','') + chr(10) + '   ' + c.get('desc','') + chr(10) + '   👉 ' + c.get('link','') + chr(10)
+                reply += '━━━━━━━━' + chr(10) + '💬 回复「转人工」联系真人客服' + chr(10)
+                reply += '📌 以上为广告展示，AI创作功能由享客虾提供' + chr(10)
     return reply
 
 
@@ -1804,7 +1859,10 @@ async def _describe_image(media_path: str) -> str:
                 )
                 if resp.status_code == 200:
                     data = resp.json()
-                    return data["choices"][0]["message"]["content"].strip()
+                    raw = data["choices"][0]["message"]["content"]
+                    # 清除 surrogate 字符，防止 utf-8 编码异常
+                    raw = raw.encode("utf-8", errors="replace").decode("utf-8")
+                    return raw.strip()
                 else:
                     last_err = f"HTTP {resp.status_code}"
         except Exception as e:
@@ -1813,6 +1871,31 @@ async def _describe_image(media_path: str) -> str:
             await asyncio.sleep(1)
     return f"[图片识别失败: {last_err}]"
 
+
+async def _extract_document(filepath: str) -> str:
+    """提取文档文字内容。支持 docx、pdf、txt。返回前5000字符。"""
+    ext = os.path.splitext(filepath)[1].lower()
+    fname = os.path.basename(filepath)
+    try:
+        if ext in (".txt", ".md"):
+            with open(filepath, "r", encoding="utf-8", errors="replace") as f:
+                text = f.read(5000)
+            return text if text.strip() else "[文件为空]"
+        elif ext == ".docx":
+            from docx import Document
+            doc = Document(filepath)
+            paras = [p.text for p in doc.paragraphs if p.text.strip()]
+            text = "\n".join(paras)[:5000]
+            return text if text.strip() else "[docx 无文字内容]"
+        elif ext == ".pdf":
+            from pdfminer.high_level import extract_text
+            text = extract_text(filepath)[:5000]
+            return text if text.strip() else "[PDF 无文字内容]"
+        else:
+            return "[不支持的文件格式]"
+    except Exception as e:
+        logger.warning(f"[ExtractDoc] 提取失败 {fname}: {e}")
+        return f"[文件提取失败: {e}]"
 
 
 # ═══════════════════════════════════════════════════
@@ -2019,6 +2102,9 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
             content = "[用户发来一段视频:{}]".format(fname)
         elif ext in (".mp3", ".wav", ".ogg", ".m4a", ".amr", ".silk"):
             content = "[用户发来一段语音:{}]".format(fname)
+        elif ext in (".docx", ".pdf", ".txt", ".md"):
+            doc_text = await _extract_document(media_path)
+            content = "[用户发来文件:{}]\n📄 文件内容:\n{}".format(fname, doc_text)
         else:
             content = "[用户发来文件:{}]".format(fname)
     
@@ -2026,82 +2112,14 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
     if media_path:
         media_hint = "\n用户发来媒体文件: {mpath}".format(mpath=media_path)
     
-    # ── 文件搜索拦截器：用户要文件/图片时，搜索可访问目录推送 ──
-    file_request_patterns = ["发给我", "推给我", "发图片", "发文件", "发一下", "找到.*证书", "找到.*文件", "找到.*图片", "图片推", "证书.*发", "文件.*发"]
-    is_file_request = any(re.search(p, content) for p in file_request_patterns)
-    if is_file_request:
-        import subprocess as _sp
-        keywords = re.sub(r'[发给我推给我发图片发文件发一下找到的了]', ' ', content).strip()
-        search_terms = [k for k in keywords.split() if len(k) > 1]
-        
-        if search_terms and user_account_id:
-            # 有绑手机号的用户可搜项目文件(archives/)
-            search_roots = ['/home/ubuntu/archives/']
-            # 同时搜该用户的手机共享目录(如果有 phone)
-            try:
-                from app.models import AsyncSessionLocal as _asf2
-                from sqlalchemy import text as _t2
-                async with _asf2() as _s2:
-                    row = await _s2.execute(_t2("SELECT phone FROM user_accounts WHERE id = :uid"), {"uid": user_account_id})
-                    phone = row.scalar()
-                    if phone:
-                        shared_dir = f'/home/ubuntu/weclaw-files/shared/{phone}/'
-                        if os.path.isdir(shared_dir):
-                            search_roots.append(shared_dir)
-            except Exception:
-                pass
-            
-            try:
-                # AND search on all search roots
-                for root in search_roots:
-                    cmd_and = ['find', root, '-type', 'f']
-                    for term in search_terms:
-                        cmd_and.extend(['-ipath', '*' + term + '*'])
-                    r_and = _sp.run(cmd_and, capture_output=True, text=True, timeout=10)
-                    and_matches = [m.strip() for m in r_and.stdout.strip().split('\n') if m.strip()]
-                    img_matches = [m for m in and_matches if m.lower().endswith(('.jpg','.jpeg','.png','.gif','.webp'))]
-                    if img_matches:
-                        logger.info(f"📂 AND命中(图): {img_matches[0]}")
-                        return f"MEDIA:{img_matches[0]}"
-                    if and_matches:
-                        logger.info(f"📂 AND命中: {and_matches[0]}")
-                        return f"MEDIA:{and_matches[0]}"
-                
-                # OR search across all roots
-                all_matches = []
-                for root in search_roots:
-                    cmd_or = ['find', root, '-type', 'f', '(' ]
-                    for i, term in enumerate(search_terms):
-                        if i > 0:
-                            cmd_or.extend(['-o', '-iname', '*' + term + '*'])
-                        else:
-                            cmd_or.extend(['-iname', '*' + term + '*'])
-                    cmd_or.extend([')'])
-                    r_or = _sp.run(cmd_or, capture_output=True, text=True, timeout=10)
-                    all_matches.extend([m.strip() for m in r_or.stdout.strip().split('\n') if m.strip()])
-                
-                if all_matches:
-                    def _score(p):
-                        s = 0
-                        lower = p.lower()
-                        if lower.endswith(('.jpg','.jpeg','.png','.gif','.webp')): s += 10
-                        for t in search_terms:
-                            if t.lower() in lower: s += 3
-                        return s
-                    all_matches.sort(key=_score, reverse=True)
-                    logger.info(f"📂 OR命中: {all_matches[0]}")
-                    return f"MEDIA:{all_matches[0]}"
-            except Exception as e:
-                logger.warning(f"📂 文件搜索异常: {e}")
-    
-
     system_prompt = (
-        "当前用户: " + (user_nickname or "铭道") + " | OpenID: " + (openid or "")[:16] + "..." + media_hint + "\n"
-        "你的身份:享客虾创作伙伴。你是一个懂创作、有温度的朋友，不是冷冰冰的AI工具。\\n回复风格:简洁有力，一句能说清不说两句。不铺垫、不啰嗦、不问‘还有什么需要帮忙的吗’。\\n核心能力:聊天、联网搜索（用 curl http://127.0.0.1:9200/search?q=关键词 查360搜索）、识图、文件处理、写代码、创作方案。用户发语音时已自动转文字，发图片你会看到内容。\\n📊 工具集: ❶八字排盘 — 发「排盘1990年5月15日12时男」即出四柱十神，加「解读」出AI深度分析 ❷量化信号 — 发「量化/信号/行情」即出最新四市数据 ❸合盘 — 发「合盘1990-05-15女和1988-08-20男」出五行对比。❹项目管理(project_*工具需传nickname参数，值见上方当前用户昵称)。\\n文件交付:用 MEDIA:/path/to/file 格式回复可将文件推送到微信对话框。\\n"
-        "🎵 写歌: 用户说出「出歌」+主题，系统自动处理创作，完成后推送给你\n"
+        "当前用户: " + (user_nickname or "铭道") + " | OpenID: " + (openid or "") + " | user_id: " + (user_id or "") + media_hint + "\n"
+        "你的身份:享客虾创作伙伴。你是一个懂创作、有温度的朋友，不是冷冰冰的AI工具。\\n回复风格:简洁有力，一句能说清不说两句。不铺垫、不啰嗦、不问‘还有什么需要帮忙的吗’。\\n核心能力:聊天、联网搜索（用 curl http://127.0.0.1:9200/search?q=关键词 查360搜索）、识图、文件处理、写代码、创作方案。用户发语音时已自动转文字，发图片你会看到内容。\\n📊 你的定位: 微信助手 — 用户把微信里的文件/照片/资料发给你，你帮他存档、整理、提取重点。用户说「我的文件」你帮列清单，说「发给我 XX」系统自动取回文件。\\n文件交付:用 MEDIA:/path/to/file 格式回复可将文件推送到微信对话框。\\n"
+        "🎵 写歌: 用户说「出歌/写歌」写新歌。播歌由系统自动拦截处理。MV由系统自动拦截处理。写歌流程：先跟用户聊主题写完整歌词（含[Verse]/[Chorus]段落），让用户确认后，调 POST http://127.0.0.1:8001/api/song/confirm（body: user_id=当前用户完整ID, lyrics=完整歌词, style_tags=英文风格, title=歌名），接口自动预检并扣费50虾点，余额不足会报错。做嗨卡消耗2虾点由系统自动扣费。\n"
         "📁 文件: 用户说出「列出文件」即可查看自己的文件目录\n"
-        "📂 项目文件: curl -s 'https://hai.pangoozn.com/api/file-proxy/list' 列目录，/read/路径 读文件内容。\n"
-
+        "📂 项目文件: curl -s -H 'X-API-Key: fileproxy_shared2026' 'https://hai.pangoozn.com/api/file-proxy/list' 列目录，/read/路径 读文件。只读。\n"
+        "🔒 文件隔离: 文件存储由系统自动管理，你不需要知道服务器路径。\n"
+        "  ⛔ 禁止用 shell 探索文件系统（find/ls/cat /home/...）——使用代理接口。\n"
         "  📖 读文件: curl -s http://127.0.0.1:8001/api/bot/file/read -d '{\"user_id\":\"OPENID(含@im.wechat)\",\"path\":\"文件路径\"}'\n"
         "  📋 列目录: curl -s http://127.0.0.1:8001/api/bot/file/ls -d '{\"user_id\":\"OPENID\"}'\n"
         "  🤫 回复时不说服务器路径(如/home/ubuntu/...)，说「已保存到你的文件空间」。\n"
@@ -2173,6 +2191,98 @@ async def _call_hermes(content: str, user_id: str, user_nickname: str = "", open
             })
         
         messages.append({"role": "user", "content": content})
+
+        # ------ 播歌/MV 快捷拦截 ------
+        import re as _re_song, subprocess as _sp_song
+        # 播歌拦截
+        if _re_song.search(r"[播放放歌听歌]|播(?:放|歌)|放歌|听歌", content):
+            _kw = _re_song.sub(r"^(?:播放|播歌|放歌|听歌)\s*(?:歌曲)?\s*", "", content).strip()
+            try:
+                _result = _sp_song.run(
+                    ["/home/ubuntu/weclaw-keepalive/scripts/play_song.py", _kw],
+                    capture_output=True, text=True, timeout=30
+                )
+                if _result.returncode == 0 and _result.stdout:
+                    _parts = _result.stdout.split("---\n")
+                    _reply = _parts[-1].strip()
+                    if _reply and "没有找到" not in _reply:
+                        await _save_conversation_pair(session_key, user_account_id, openid, content, _reply)
+                        sem.release()
+                        return _reply
+            except Exception as _e:
+                logger.warning("[SongPlay] 快捷播歌异常: %s", _e)
+
+        # MV拦截：XX做个MV / 把XX做成MV
+        _mv_match = _re_song.search(r"(.+?)(?:做个MV|做成MV|生成MV|转MV|做MV)", content)
+        if _mv_match:
+            _kw = _mv_match.group(1).strip()
+            try:
+                _result = _sp_song.run(
+                    ["/home/ubuntu/weclaw-keepalive/scripts/play_song.py", _kw],
+                    capture_output=True, text=True, timeout=30
+                )
+                if _result.returncode == 0 and _result.stdout:
+                    _parts = _result.stdout.split("---\n")
+                    _play_info = _parts[-1].strip()
+                    if _play_info and "没有找到" not in _play_info:
+                        # 从脚本输出中提取 track_id
+                        _id_match = _re_song.search(r"track_id=([a-f0-9-]+)", _play_info)
+                        if _id_match:
+                            _tid = _id_match.group(1)
+                            # ── MV 生成前预检余额（10虾点）──
+                            _mv_balance = 0
+                            try:
+                                from app.models import AsyncSessionLocal as _mv_sf
+                                from app.bot.resources import get_member_points_async as _gmp
+                                from sqlalchemy import text as _mv_t
+                                _mv_oid = openid
+                                async with _mv_sf() as _mv_s:
+                                    # openid 带 @im.wechat 后缀时反查真实 openid（与 _get_member_line 一致）
+                                    if "@im.wechat" in str(openid):
+                                        _mv_bare = str(openid).split("@")[0]
+                                        _mv_r = await _mv_s.execute(
+                                            _mv_t("SELECT openid FROM channel_bindings WHERE channel_type='ilink' "
+                                                  "AND (channel_user_id = :cuid OR channel_user_id = :bare) "
+                                                  "AND openid NOT LIKE '%@im.wechat' AND openid NOT LIKE '%@tmp' "
+                                                  "ORDER BY bound_at DESC LIMIT 1"),
+                                            {"cuid": openid, "bare": _mv_bare})
+                                        _mv_o2 = _mv_r.scalar_one_or_none()
+                                        if _mv_o2:
+                                            _mv_oid = _mv_o2
+                                    _mv_pts = await _gmp(_mv_s, _mv_oid)
+                                _mv_balance = _mv_pts.get("xiake_points", 0)
+                                if not _mv_pts.get("is_member") or _mv_balance < 10:
+                                    _mv_reply = (f"🦞 虾点不足，生成MV需 10 虾点"
+                                                 f"（当前余额 {_mv_balance}）。开通会员或充值后再试。")
+                                    await _save_conversation_pair(session_key, user_account_id, openid, content, _mv_reply)
+                                    sem.release()
+                                    return _mv_reply
+                            except Exception as _mv_e:
+                                logger.warning("[SongMV] 余额预检异常: %s", _mv_e)
+                            # 调 MV 生成脚本
+                            _mv_result = _sp_song.run(
+                                ["/home/ubuntu/weclaw-keepalive/scripts/gen_mv.py", _tid],
+                                capture_output=True, text=True, timeout=300
+                            )
+                            _mv_reply = _mv_result.stdout.strip() if _mv_result.returncode == 0 else "MV生成失败"
+                            # ── 生成成功后扣 10 虾点 ──
+                            if "生成成功" in _mv_reply:
+                                try:
+                                    from app.models import AsyncSessionLocal as _mv_sf2
+                                    from app.bot.resources import check_and_deduct_async as _mv_cd
+                                    async with _mv_sf2() as _mv_s2:
+                                        _mv_ded = await _mv_cd(_mv_s2, _mv_oid, "mv")
+                                    if _mv_ded.get("ok"):
+                                        _mv_reply += f"\n🦞 已扣 10 虾点，剩余 {_mv_ded['remaining']}"
+                                    else:
+                                        logger.warning(f"[SongMV] 扣费失败: {_mv_ded.get('message')}")
+                                except Exception as _mv_e2:
+                                    logger.error(f"[SongMV] 扣费异常: {_mv_e2}")
+                            await _save_conversation_pair(session_key, user_account_id, openid, content, _mv_reply)
+                            sem.release()
+                            return _mv_reply
+            except Exception as _e:
+                logger.warning("[SongMV] 快捷MV异常: %s", _e)
 
         # Research routing -> search + Doubao
         if _is_research_query(content):
@@ -2340,6 +2450,76 @@ async def push_message(data: dict):
         logger.warning(f"[Push] 失败: {e}")
         return {"success": False, "error": str(e)}
 
+@router.post("/song/confirm")
+async def song_confirm(data: dict):
+    """写歌确认提交（用户确认歌词后由 Agent HTTP 直调）：
+    预检余额(50虾点) → 转发主站 /api/music/bot-suno-make（异步生成/入库/回调）→ 返回 serial_no
+    主站完成后回调本服务 /suno-callback 扣费+推送。
+    """
+    user_id = data.get("user_id", "")
+    lyrics = data.get("lyrics", "")
+    style_tags = data.get("style_tags", "")
+    title = data.get("title", "")
+    nickname = data.get("nickname", "虾友")
+    if not user_id or not lyrics.strip():
+        return {"error": "user_id 和 lyrics 必填"}
+    uid = user_id.split("@")[0]
+
+    # ── 1. 反查 openid + 预检余额（50虾点）──
+    from app.models import AsyncSessionLocal as _sasf
+    from app.bot.resources import get_member_points_async as _sgmp
+    from sqlalchemy import text as _st4
+    _oid = ""
+    async with _sasf() as _ss:
+        _sr = await _ss.execute(
+            _st4("SELECT openid FROM channel_bindings WHERE channel_user_id = :uid AND channel_type='ilink' "
+                 "AND openid NOT LIKE '%@im.wechat' AND openid NOT LIKE '%@tmp' "
+                 "ORDER BY bound_at DESC LIMIT 1"),
+            {"uid": uid})
+        _srow = _sr.fetchone()
+        if _srow:
+            _oid = _srow[0]
+        if not _oid:
+            _sr2 = await _ss.execute(
+                _st4("SELECT openid FROM channel_bindings WHERE channel_user_id = :uid AND channel_type='ilink' LIMIT 1"),
+                {"uid": uid})
+            _srow2 = _sr2.fetchone()
+            if _srow2:
+                _oid = _srow2[0]
+        if not _oid:
+            return {"error": "未找到用户绑定信息，无法写歌"}
+        _spts = await _sgmp(_ss, _oid)
+        if not _spts.get("is_member"):
+            return {"error": "🦞 非会员用户无法写歌。开通会员：https://ai.pangoozn.com/subscribe"}
+        if _spts.get("xiake_points", 0) < 50:
+            return {"error": f"🦞 虾点不足，写歌需 50 虾点（当前余额 {_spts.get('xiake_points', 0)}）。开通会员或充值后再试。"}
+
+    # ── 2. 转发主站 bot-suno-make（异步生成+入库+回调）──
+    import httpx as _shx
+    _payload = {
+        "lyrics": lyrics,
+        "tags": style_tags or "流行 叙事",
+        "title": title or "未命名",
+        "creator_uid": _oid,
+        "creator_nickname": nickname,
+        "user_id": user_id,
+        "callback_url": "https://ai.pangoozn.com/api/bot/suno-callback",
+    }
+    try:
+        async with _shx.AsyncClient(timeout=30) as _sc:
+            _sresp = await _sc.post("https://hai.pangoozn.com/api/music/bot-suno-make", json=_payload)
+            _sdata = _sresp.json()
+    except Exception as _se:
+        logger.error(f"[SongConfirm] 主站提交失败: {_se}")
+        return {"error": f"提交失败: {_se}"}
+
+    if _sdata.get("status") != "pending":
+        return {"error": _sdata.get("detail", "提交失败")}
+
+    logger.info(f"[SongConfirm] ✅ {uid[:16]} 提交写歌 serial_no={_sdata.get('serial_no', '')}")
+    return {"ok": True, "serial_no": _sdata.get("serial_no", ""), "message": "已提交，正在作曲，完成后推送给你 🎵"}
+
+
 @router.post("/suno-callback")
 async def suno_callback(data: dict):
     """Suno 完成回调：查 Bot → 走 keepalive 推送播放链接"""
@@ -2367,6 +2547,27 @@ async def suno_callback(data: dict):
                 return {"success": False, "error": "bot not found"}
 
             bot_id = row[0]
+
+        # ── 生成成功，扣50虾点 ──
+        try:
+            from app.models import AsyncSessionLocal as _asf3
+            from app.bot.resources import check_and_deduct_async as _cd
+            from sqlalchemy import text as _st3
+            async with _asf3() as _s3:
+                # 查 svc_openid
+                _cb_row = await _s3.execute(
+                    _st3("SELECT openid FROM channel_bindings WHERE channel_user_id = :uid AND channel_type = 'ilink' LIMIT 1"),
+                    {"uid": uid}
+                )
+                _cb = _cb_row.fetchone()
+                if _cb:
+                    _deduct = await _cd(_s3, _cb[0], "ai_song")
+                    if _deduct.get("ok"):
+                        logger.info(f"[SunoCallback] ✅ 扣费50点成功, 剩余{_deduct['remaining']}")
+                    else:
+                        logger.warning(f"[SunoCallback] 扣费失败: {_deduct.get('message')}")
+        except Exception as _dd:
+            logger.error(f"[SunoCallback] 扣费异常: {_dd}")
 
         # 直接调 keepalive send API（不走 push_queue）
         content = f"🎵 新歌《{title}》已发布到音乐厅！\nhttps://hai.pangoozn.com{player_url}"
