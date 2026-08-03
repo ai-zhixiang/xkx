@@ -31,6 +31,7 @@ from app.routes.unified import router as unified_router
 from app.routes.poster import router as poster_router
 from app.routes.referral import router as referral_router
 from app.routes.haica import router as haica_router
+from app.routes.orders import router as orders_router
 from app.scheduler import start_scheduler
 from app.bot.qqbot import run_qq_bot
 
@@ -89,6 +90,7 @@ app.include_router(unified_router)
 app.include_router(poster_router)
 app.include_router(referral_router)
 app.include_router(haica_router)
+app.include_router(orders_router)
 app.mount('/static', StaticFiles(directory='app/static'), name='static')
 app.mount('/agents', StaticFiles(directory='/home/ubuntu/weclaw-1/agents'), name='agents')  # v0.5.0: 用户文件服务
 
@@ -430,6 +432,57 @@ async def push_write_song(data: dict):
 async def promo_haica_player():
     with open('app/templates/player_haica.html', 'r', encoding='utf-8') as f:
         return HTMLResponse(f.read())
+
+@app.head('/player/promo-haica')
+async def promo_haica_player_head():
+    body = open('app/templates/player_haica.html', 'r', encoding='utf-8').read()
+    return HTMLResponse(content=body)
+
+@app.get("/player/promo-2.1", response_class=HTMLResponse)
+async def promo_21_player():
+    with open("app/templates/player_promo_21.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(f.read())
+@app.get("/player/promo-v2", response_class=HTMLResponse)
+async def promo_v2_player():
+    with open("app/templates/player_promo_v2.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(f.read())
+
+@app.head("/player/promo-2.1")
+async def promo_21_player_head():
+    body = open("app/templates/player_promo_21.html", "r", encoding="utf-8").read()
+    return HTMLResponse(content=body)
+
+@app.get("/player/promo-2.2", response_class=HTMLResponse)
+async def promo_22_player():
+    with open("app/templates/player_promo_22.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(f.read())
+@app.head("/player/promo-2.2")
+async def promo_22_player_head():
+    body = open("app/templates/player_promo_22.html", "r", encoding="utf-8").read()
+    return HTMLResponse(content=body)
+
+@app.get("/og-test-minimal", response_class=HTMLResponse)
+async def og_test_minimal():
+    with open("app/templates/og_test_minimal.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(f.read())
+@app.head("/og-test-minimal")
+async def og_test_minimal_head():
+    body = open("app/templates/og_test_minimal.html", "r", encoding="utf-8").read()
+    return HTMLResponse(content=body)
+
+@app.get("/og-promo-test", response_class=HTMLResponse)
+async def og_promo_test():
+    with open("app/templates/og_promo_test.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(f.read())
+@app.head("/og-promo-test")
+async def og_promo_test_head():
+    body = open("app/templates/og_promo_test.html", "r", encoding="utf-8").read()
+    return HTMLResponse(content=body)
+@app.head("/player/promo-v2")
+async def promo_v2_player_head():
+    body = open("app/templates/player_promo_v2.html", "r", encoding="utf-8").read()
+    return HTMLResponse(content=body)
+
 
 @app.get("/xiakexing", response_class=HTMLResponse)
 async def xiakexing_page():

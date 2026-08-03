@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>工作的事聊着聊着就干了 · 享客虾播客</title>
+  <meta name="description" content="以前让写方案发呆半天，现在说句话就行。享客虾 — 聊天就是创作" />
+  <meta property="og:image" content="https://ai.pangoozn.com/static/promo_v2_og.jpg?v=4" />
+  <meta property="og:image:secure_url" content="https://ai.pangoozn.com/static/promo_v2_og.jpg?v=4" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:title" content="工作的事，聊着聊着就干了 · 享客虾播客" />
+  <meta property="og:description" content="以前让写方案发呆半天，现在说句话就行。享客虾 — 聊天就是创作" />
+  <meta property="og:url" content="https://ai.pangoozn.com/player/promo-2.2" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="享客虾" />
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e1a;color:#fff;font-family:system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.header{width:100%;padding:12px 16px;display:flex;align-items:center;max-width:800px}
+.header .brand{color:#ff7832;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.video-wrap{width:100%;max-width:800px;padding:0 12px}
+video{width:100%;border-radius:12px;background:#000;box-shadow:0 8px 40px rgba(255,120,50,0.15)}
+.meta{padding:16px 20px 0;max-width:800px;width:100%}
+.meta h1{font-size:20px;color:#fff;margin-bottom:6px;line-height:1.4}
+.meta p{font-size:13px;color:#7a8298;line-height:1.6}
+.meta .tags{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.meta .tags span{padding:3px 10px;border-radius:14px;background:rgba(255,120,50,0.12);color:#ff7832;font-size:11px}
+.bot-section{max-width:800px;width:100%;padding:24px 20px 32px}
+.bot-card{background:linear-gradient(135deg,#1a1e30 0%,#12162a 100%);border:1px solid rgba(255,120,50,0.2);border-radius:16px;padding:20px;text-align:center}
+.bot-card .icon{font-size:40px;margin-bottom:8px}
+.bot-card h2{font-size:17px;color:#fff;margin-bottom:4px}
+.bot-card .sub{font-size:12px;color:#7a8298;margin-bottom:14px}
+.bot-btn{display:inline-block;padding:12px 36px;border-radius:24px;background:#ff7832;color:#fff;font-size:15px;font-weight:600;border:none;cursor:pointer;text-decoration:none;transition:transform .15s,opacity .2s;-webkit-tap-highlight-color:transparent}
+.bot-btn:active{transform:scale(0.95);opacity:.8}
+.bot-card .referrer{font-size:11px;color:#555;margin-top:10px}
+.bot-card .referrer strong{color:#ff7832;font-weight:500}
+.share-talk{max-width:800px;width:100%;padding:0 20px 16px}
+.share-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:12px;background:rgba(255,120,50,0.08);border:1px solid rgba(255,120,50,0.15);color:#ff7832;font-size:13px;cursor:pointer;transition:background .2s;-webkit-tap-highlight-color:transparent}
+.share-btn:active{background:rgba(255,120,50,0.15)}
+.share-btn .icon{font-size:16px}
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:12px}
+.loading .spinner{width:36px;height:36px;border:3px solid rgba(255,120,50,0.2);border-top-color:#ff7832;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading p{font-size:13px;color:#7a8298}
+.footer{font-size:11px;color:#444;padding:16px 20px 24px;text-align:center;max-width:800px}
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading">
+  <div class="spinner"></div>
+  <p>🦞 加载中…</p>
+</div>
+
+<div id="main-content" style="display:none">
+
+<div class="header">
+  <div class="brand">🦞 享客虾 · 播客 #2</div>
+</div>
+
+<div class="video-wrap">
+  <video id="player" controls playsinline poster="https://ai.pangoozn.com/static/promo_v2_og.jpg?v=4">
+    <source src="https://ai.pangoozn.com/static/promo_v2.mp4" type="video/mp4">
+  </video>
+</div>
+
+<div class="meta">
+  <h1>工作的事，聊着聊着就干了 🦞</h1>
+  <p>写方案 · 读PDF · 记灵感 · 就是聊天这么简单</p>
+  <div class="tags">
+    <span>#AI创作</span>
+    <span>#享客虾</span>
+    <span>#工作效率</span>
+  </div>
+</div>
+
+<div class="share-talk" id="talkSection" style="display:none">
+  <div class="share-btn" id="copyTalkBtn">
+    <span class="icon">📋</span>
+    <span id="talkLabel">复制推荐语 + 链接</span>
+  </div>
+</div>
+
+<div class="bot-section" id="botSection">
+  <div class="bot-card">
+    <div class="icon">🦞</div>
+    <h2>工作的事，聊着聊着就干了</h2>
+    <p class="sub">享客虾 · 聊天就是创作</p>
+    <div class="bot-btn" id="botBtn">👇 添加享客虾 Bot</div>
+    <div class="referrer" id="referrerInfo" style="display:none"></div>
+  </div>
+</div>
+
+<div class="footer">虾客行工作室 · 享客虾出品</div>
+
+</div>
+
+<script>
+(function(){
+  var loadingEl = document.getElementById('loading');
+  var mainEl = document.getElementById('main-content');
+  var botBtn = document.getElementById('botBtn');
+  var referrerInfo = document.getElementById('referrerInfo');
+  var talkSection = document.getElementById('talkSection');
+  var copyTalkBtn = document.getElementById('copyTalkBtn');
+  var talkLabel = document.getElementById('talkLabel');
+
+  var isWeChat = /MicroMessenger/i.test(navigator.userAgent);
+
+  function getParam(name) {
+    var m = location.search.match(new RegExp('[?&]' + name + '=([^&]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
+  var ref = getParam('ref');
+  var token = getParam('token') || getParam('sync');
+  
+  // ── 从 JWT Token 提取用户信息（不依赖 URL 裸参数） ──
+  var openid = '';
+  var nickname = '';
+  function decodeToken(t) {
+    if (!t || t.length < 20) return false;
+    try {
+      var parts = t.split('.');
+      if (parts.length !== 3) return false;
+      var payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      payload = payload.replace(/%[0-9A-F]{2}/g, ''); // strip URL encoding artifacts
+      var json = atob(payload);
+      var data = JSON.parse(json);
+      if (data.openid) openid = data.openid;
+      if (data.nickname) nickname = data.nickname;
+      return true;
+    } catch(e) { return false; }
+  }
+  if (token && !openid) decodeToken(token);
+
+  // ── 推广话术 ──
+  function buildTalkText(code) {
+    var link = 'https://ai.pangoozn.com/player/promo-2.2';
+    if (code) link += '?ref=' + encodeURIComponent(code);
+    return '最近在用享客虾，工作的事聊聊天就干了。写方案、读PDF、记灵感，发句话就行。就是聊天这么简单！😄\n\n' + link;
+  }
+
+  // ── 复制话术 ──
+  function setupCopy(code) {
+    var text = buildTalkText(code);
+    copyTalkBtn.onclick = function() {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+          talkLabel.textContent = '✅ 已复制！分享给朋友吧';
+          setTimeout(function() { talkLabel.textContent = '复制推荐语 + 链接'; }, 2000);
+        }).catch(function() {
+          fallbackCopy(text);
+        });
+      } else {
+        fallbackCopy(text);
+      }
+    };
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      talkLabel.textContent = '✅ 已复制！';
+      setTimeout(function() { talkLabel.textContent = '复制推荐语 + 链接'; }, 2000);
+    } catch(e) {}
+    document.body.removeChild(ta);
+  }
+
+  // ── 按钮点击跳转 ──
+  function bindBotClick(href) {
+    botBtn.onclick = function(e) {
+      if (href) {
+        location.href = href;
+      }
+    };
+    botBtn.style.cursor = 'pointer';
+  }
+
+  // ── 显示内容 ──
+  function showContent() {
+    loadingEl.style.display = 'none';
+    mainEl.style.display = 'block';
+  }
+
+  // ── 清理 URL ──
+  function cleanUrl(code) {
+    var clean = location.pathname;
+    if (code) clean += '?ref=' + encodeURIComponent(code);
+    window.history.replaceState({}, '', clean);
+  }
+
+  // ── 设置按钮和推广码 ──
+  function setupBot(code) {
+    var bindHref = code ? 'https://ai.pangoozn.com/xkx/bind?ref=' + encodeURIComponent(code) : 'https://ai.pangoozn.com/xkx/bind';
+    bindBotClick(bindHref);
+    if (code) {
+      referrerInfo.style.display = 'block';
+      referrerInfo.innerHTML = '推广码: <strong>' + code + '</strong>';
+    }
+    setupCopy(code);
+    talkSection.style.display = 'block';
+  }
+
+  // ── 微信分享配置 ──
+  function setupWeChatShare(code) {
+    if (typeof wx === 'undefined' || !isWeChat) return;
+    var shareUrl = 'https://ai.pangoozn.com/player/promo-2.2';
+    if (code) shareUrl += '?ref=' + encodeURIComponent(code);
+
+    fetch('/api/wechat/jsconfig?url=' + encodeURIComponent(location.href.split('#')[0]))
+      .then(function(r) { return r.json(); })
+      .then(function(cfg) {
+        if (cfg.errcode) return;
+        wx.config({
+          debug: false,
+          appId: cfg.appId,
+          timestamp: cfg.timestamp,
+          nonceStr: cfg.nonceStr,
+          signature: cfg.signature,
+          jsApiList: ['updateTimelineShareData', 'updateAppMessageShareData', 'onMenuShareTimeline', 'onMenuShareAppMessage']
+        });
+        wx.ready(function() {
+          var shareLink = shareUrl;
+          var shareData = {
+            title: '工作的事，聊着聊着就干了 · 享客虾播客',
+            desc: '以前让写方案发呆半天，现在说句话就行。享客虾 — 聊天就是创作',
+            link: shareLink,
+            imgUrl: 'https://ai.pangoozn.com/static/promo_v2_og.jpg?v=4'
+          };
+          wx.updateTimelineShareData(shareData);
+          wx.updateAppMessageShareData(shareData);
+          try { wx.onMenuShareTimeline(shareData); } catch(e) {}
+          try { wx.onMenuShareAppMessage(shareData); } catch(e) {}
+        });
+      })
+      .catch(function() {});
+  }
+
+  // ═══════════════════════════════════
+  //  🔒 立即清理 URL：只保留 ?ref=xxx，去掉 token/openid/avatar 等
+  // ═══════════════════════════════════
+  (function cleanUrlImmediate() {
+    var clean = location.pathname;
+    var ref = getParam('ref');
+    if (ref) clean += '?ref=' + encodeURIComponent(ref);
+    if (clean !== location.href.split('?')[0] + (location.search ? (ref ? '?ref=' + ref : '') : '').split('#')[0]) {
+      window.history.replaceState({}, '', clean);
+    }
+  })();
+
+  // ═══════════════════════════════════
+  //  路由
+  // ═══════════════════════════════════
+
+  if (!isWeChat) {
+    // Non-WeChat: show QR code for scanning
+    showContent();
+    var qrLink = 'https://ai.pangoozn.com/xkx/bind';
+    if (ref) qrLink += '?ref=' + encodeURIComponent(ref);
+    document.getElementById('botBtn').outerHTML =
+      '<div style="margin:16px 0"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' +
+      encodeURIComponent(qrLink) +
+      '" alt="微信扫码添加享客虾" style="width:180px;height:180px;border-radius:12px;background:#fff;padding:8px"></div>' +
+      '<div style="font-size:11px;color:#7a8298;margin-top:4px">📱 微信扫码 · 添加享客虾 Bot</div>';
+    return;
+  }
+
+  if (!openid) {
+    var oauthTarget = '/player/promo-2.2';
+    if (ref) oauthTarget += '?ref=' + encodeURIComponent(ref);
+    location.href = '/api/auth/wechat-redirect?target=' + encodeURIComponent(oauthTarget) + '&source=player';
+    return;
+  }
+
+  var promoterRef = getParam('ref');
+
+  fetch('/api/referral/info?openid=' + encodeURIComponent(openid))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var myCode = (data && data.code) ? data.code : '';
+      var useCode = promoterRef || myCode;
+      setupBot(useCode);
+      setupWeChatShare(useCode);
+      cleanUrl(useCode);
+      showContent();
+    })
+    .catch(function() {
+      setupBot(promoterRef || '');
+      cleanUrl(promoterRef || '');
+      showContent();
+    });
+
+})();
+</script>
+
+</body>
+</html>

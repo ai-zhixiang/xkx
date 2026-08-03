@@ -9,3 +9,14 @@ __pycache__/
 *.bak
 .venv/
 apiclient_key.pem
+
+# Media / runtime data (not source)
+app/static/downloads/
+app/static/posters/
+app/static/og/
+app/static/*.mp4
+app/static/*.jpg
+data/
+static/lobster.png
+biliup_qr_login.png
+*.bak-*

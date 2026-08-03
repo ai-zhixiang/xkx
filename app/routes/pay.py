@@ -135,7 +135,7 @@ async def create_order(data: CreateOrderRequest, db: AsyncSession = Depends(get_
         order.paid_at = datetime.now()
         # 真正激活 subscriber
         sub.status = SubscriberStatus.ACTIVE
-        sub.xiake_points = plan.months * 10000
+        sub.xiake_points = 60000 if (plan.months or 0) >= 12 else 3000
         sub.expires_at = calc_expires
         if is_new:
             sub.started_at = today
@@ -353,10 +353,10 @@ async def pay_notify(request: Request, db: AsyncSession = Depends(get_db)):
             sub.status = SubscriberStatus.ACTIVE
             if order.new_expires_at:
                 sub.expires_at = order.new_expires_at
-            # 加虾点
-            monthly_points = order.months * 3000
-            max_points = monthly_points * 2
-            sub.xiake_points = min((sub.xiake_points or 0) + monthly_points, max_points)
+            # 加虾点（年卡60000 / 月卡3000）
+            grant_points = 60000 if (order.months or 0) >= 12 else 3000
+            max_points = grant_points * 2
+            sub.xiake_points = min((sub.xiake_points or 0) + grant_points, max_points)
 
         await db.commit()
 

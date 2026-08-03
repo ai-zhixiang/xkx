@@ -258,7 +258,7 @@ async def referral_info(openid: str = Query(..., description="用户 openid")):
     conn = await asyncpg.connect(DATABASE_URL)
     try:
         sub = await conn.fetchrow(
-            "SELECT id FROM subscribers WHERE openid = $1", openid
+            "SELECT id, nickname, avatar_url FROM subscribers WHERE openid = $1", openid
         )
         if not sub:
             raise HTTPException(404, "用户不存在")
@@ -309,6 +309,8 @@ async def referral_info(openid: str = Query(..., description="用户 openid")):
         return {
             "code": code,
             "referral_code": code,
+            "nickname": sub.get("nickname") or "",
+            "avatar_url": sub.get("avatar_url") or "",
             "link": f"https://ai.pangoozn.com/xiakexia?ref={code}" if code else None,
             "referral_count": level1,
             "total_commission": comm["paid_pts"] + comm["pending_pts"],
@@ -336,7 +338,7 @@ async def commission_list(
     conn = await asyncpg.connect(DATABASE_URL)
     try:
         sub = await conn.fetchrow(
-            "SELECT id FROM subscribers WHERE openid = $1", openid
+            "SELECT id, nickname, avatar_url FROM subscribers WHERE openid = $1", openid
         )
         if not sub:
             raise HTTPException(404, "用户不存在")
@@ -522,6 +524,92 @@ async def settle_commission(order_id: int = Query(...)):
 
 
 # ── 6. 验证推广码 ──
+
+@router.get("/promo-code")
+async def promo_code(openid: str = Query(..., description="用户 openid（取自 OAuth）")):
+    """播放器页专用：创建/查询订阅者 + 生成推广码，返回推广信息"""
+    conn = await asyncpg.connect(DATABASE_URL)
+    try:
+        sub = await conn.fetchrow("SELECT id, nickname FROM subscribers WHERE openid = $1", openid)
+        if not sub:
+            # 新建订阅者：优先用已有真实昵称（auth_center users 表），避免占位符
+            _nick = f"虾友{openid[-6:]}"
+            _av = None
+            try:
+                _ac = await asyncpg.connect("postgresql://lucky:lucky_pass@localhost:5432/auth_center")
+                try:
+                    _real = await _ac.fetchrow(
+                        "SELECT u.nickname, u.avatar_url FROM users u JOIN openid_mappings om ON om.phone = u.phone WHERE om.openid = $1 LIMIT 1",
+                        openid)
+                finally:
+                    await _ac.close()
+            except Exception:
+                _real = None
+            if _real and _real["nickname"] and _real["nickname"] != "微信用户":
+                _nick = _real["nickname"]
+                _av = _real["avatar_url"]
+            await conn.execute(
+                "INSERT INTO subscribers (openid, nickname, avatar_url, daily_push, plan_id, status, started_at, expires_at, created_at, updated_at) "
+                "VALUES ($1, $2, $3, false, 8, 'VISITOR', CURRENT_DATE, CURRENT_DATE + 365, NOW(), NOW())",
+                openid, _nick, _av
+            )
+            sub = await conn.fetchrow("SELECT id, nickname FROM subscribers WHERE openid = $1", openid)
+
+        sub_id = sub["id"]
+
+        # 推广码
+        code_row = await conn.fetchrow(
+            "SELECT code FROM referral_codes WHERE subscriber_id = $1", sub_id
+        )
+        if code_row:
+            code = code_row["code"]
+        else:
+            _chars = string.ascii_uppercase + string.digits
+            for _ in range(10):
+                _new_code = "XK" + "".join(random.choices(_chars, k=8))
+                _exists = await conn.fetchrow("SELECT id FROM referral_codes WHERE code = $1", _new_code)
+                if not _exists:
+                    break
+            await conn.execute(
+                "INSERT INTO referral_codes (subscriber_id, code) VALUES ($1, $2)",
+                sub_id, _new_code
+            )
+            code = _new_code
+
+        # 统计
+        level1 = await conn.fetchval(
+            "SELECT COUNT(*) FROM referral_relations WHERE referrer_subscriber_id = $1 AND level = 1", sub_id
+        )
+
+        # 判断是否有 Bot
+        has_bot = False
+        try:
+            cb = await conn.fetchrow(
+                "SELECT channel_user_id FROM channel_bindings WHERE openid = $1 AND is_active = true LIMIT 1",
+                openid
+            )
+            if cb:
+                bot = await conn.fetchrow(
+                    "SELECT id FROM bot_accounts WHERE user_id = $1 AND is_active = true LIMIT 1",
+                    cb["channel_user_id"]
+                )
+                if bot:
+                    has_bot = True
+        except:
+            pass
+
+        return {
+            "openid": openid,
+            "nickname": sub["nickname"] or f"虾友{openid[-4:]}",
+            "code": code,
+            "referral_link": f"https://ai.pangoozn.com/player/promo-haica?ref={code}",
+            "bind_link": f"https://ai.pangoozn.com/xkx/bind?ref={code}",
+            "referral_count": level1,
+            "has_bot": has_bot
+        }
+    finally:
+        await conn.close()
+
 
 @router.get("/verify-code")
 async def verify_code(code: str = Query(..., description="推广码")):

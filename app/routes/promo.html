@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>推广享客虾 — 享客虾推广计划</title>
+<meta name="description" content="享客虾，虾客行。邀请好友，赚虾点奖励。">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:#f5f0e8;
+  font-family:-apple-system,"Noto Serif CJK SC","Noto Sans SC",serif;
+  min-height:100vh;
+  padding:36px 20px 60px;
+  text-align:center;
+}
+.logo{font-size:56px;margin-bottom:2px}
+.brand{font-size:24px;font-weight:700;color:#5B8C3E;margin-bottom:2px}
+.slogan{font-size:14px;color:#8a7a64;margin-bottom:4px}
+.subtitle{font-size:13px;color:#bbb5a8;margin-bottom:18px}
+.line{width:50px;height:2px;background:#5B8C3E;margin:0 auto 22px;border-radius:1px}
+.card{
+  background:#fffdf7;
+  border-radius:16px;
+  padding:22px 20px;
+  max-width:420px;
+  width:100%;
+  margin:0 auto 10px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.06);
+  text-align:left;
+}
+.card h3{font-size:16px;color:#333;margin-bottom:8px}
+.card p,.card li{font-size:13px;color:#666;line-height:1.8}
+.card ul{padding-left:18px}
+.tag{
+  display:inline-block;
+  font-size:11px;
+  background:#5B8C3E;color:#fff;
+  padding:3px 10px;
+  border-radius:10px;
+  margin-bottom:6px;
+}
+.btn{
+  display:inline-block;
+  background:#5B8C3E;color:#fff;
+  border:none;border-radius:12px;
+  padding:14px 32px;
+  font-size:15px;font-weight:600;
+  text-decoration:none;
+  cursor:pointer;
+  margin-top:12px;
+  transition:opacity .2s;
+}
+.btn:active{opacity:.7}
+.btn-block{display:block;text-align:center}
+.btn-outline{
+  background:#fffdf7;color:#5B8C3E;
+  border:1.5px solid #5B8C3E;
+  margin-top:8px;
+}
+.stats-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:8px;
+  margin:12px 0;
+}
+.stat-box{
+  background:#f5f0e8;
+  border-radius:10px;
+  padding:12px 8px;
+  text-align:center;
+}
+.stat-box .num{font-size:22px;font-weight:700;color:#5B8C3E}
+.stat-box .label{font-size:10px;color:#8a7a64;margin-top:3px}
+.link-box{
+  background:#f5f0e8;
+  border-radius:10px;
+  padding:12px 14px;
+  margin:10px 0;
+  word-break:break-all;
+  font-size:12px;
+  color:#5B8C3E;
+  text-align:center;
+  cursor:pointer;
+}
+.link-box:active{opacity:.6}
+.footer{font-size:11px;color:#bbb5a8;margin-top:28px}
+</style>
+</head>
+<body>
+
+<div class="logo">&#x1F99E;</div>
+<div class="brand">享客虾</div>
+<div class="slogan">享客虾，虾客行</div>
+<div class="subtitle">— 推广计划 —</div>
+<div class="line"></div>
+
+<div class="card">
+  <div class="tag">推广规则</div>
+  <h3>如何推广</h3>
+  <ul>
+    <li>分享你的推广链接或海报给微信好友</li>
+    <li>好友通过链接添加 Bot 开通会员</li>
+    <li>你得 <strong>15% 虾点返佣</strong>（一级）</li>
+    <li>好友再推广，你得 <strong>5% 虾点返佣</strong>（二级）</li>
+    <li>虾点可用于写歌、制作嗨卡等创作</li>
+  </ul>
+</div>
+
+<div id="nonWechat" style="display:none">
+  <div class="card">
+    <div class="tag">关注服务号</div>
+    <h3>打开微信扫码关注</h3>
+    <p style="font-size:13px;color:#666;line-height:1.8;">
+      长按图片保存到相册，打开微信扫一扫关注享客虾
+    </p>
+    <div style="background:#fff;width:200px;height:200px;margin:12px auto;border-radius:8px;display:flex;align-items:center;justify-content:center;border:1px solid #eee;">
+      <img src="data:image/png;base64,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" alt="享客虾公众号二维码" style="width:180px;height:180px;">
+    </div>
+    <p style="font-size:12px;color:#999;margin-top:6px;text-align:center;">
+      保存二维码 → 打开微信 → 扫一扫 → 关注
+    </p>
+  </div>
+</div>
+
+<div class="card" id="statsCard">
+  <div class="tag">推广战绩</div>
+  <h3 id="statsTitle">加载中...</h3>
+  <div id="statsContent">
+    <p style="font-size:13px;color:#999;line-height:1.8;text-align:center;padding:8px 0;">
+      <span id="loadingText">正在获取推广信息...</span>
+    </p>
+  </div>
+</div>
+
+<div class="footer">
+  享客虾 · 智享家
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const openid = params.get('openid');
+const isWechat = /MicroMessenger/i.test(navigator.userAgent);
+
+if (openid) {
+  document.getElementById('statsCard').style.display = 'block';
+  fetch('/api/referral/info?openid=' + openid)
+    .then(r => r.json())
+    .then(data => {
+      if (data.referral_count !== undefined) {
+        document.getElementById('statsTitle').textContent = '我的推广战绩';
+        const code = data.referral_code || data.code || '';
+        document.getElementById('statsContent').innerHTML = 
+          '<div class="stats-grid">' +
+            '<div class="stat-box"><div class="num">' + (data.referral_count || 0) + '</div><div class="label">邀请人数</div></div>' +
+            '<div class="stat-box"><div class="num">' + ((data.total_commission || 0).toLocaleString()) + '</div><div class="label">累计虾点</div></div>' +
+            '<div class="stat-box"><div class="num">' + (data.level2_count || 0) + '</div><div class="label">二级邀请</div></div>' +
+          '</div>' +
+          '<a href="/promo/poster?code=' + code + '" class="btn btn-block" style="margin-bottom:6px;">📷 我的推广海报</a>' +
+          '<div class="link-box" id="refLink" onclick="copyLink(this)">' +
+            'ai.pangoozn.com/xkx/bind?ref=' + code +
+          '</div>' +
+          '<p style="font-size:11px;color:#aaa;text-align:center;margin-top:4px;">👆 点击复制推广链接</p>';
+      } else {
+        document.getElementById('statsTitle').textContent = '开始推广';
+        document.getElementById('statsContent').innerHTML =
+          '<p style="font-size:14px;color:#333;line-height:1.8;text-align:center;padding:4px 0;">' +
+          '你还没有添加享客虾 Bot<br>' +
+          '添加后才能获得专属推广链接和海报</p>' +
+          '<a href="https://ai.pangoozn.com/xkx/bind?ref=new" class="btn btn-block">📱 添加享客虾 Bot</a>' +
+          '<p style="font-size:11px;color:#aaa;text-align:center;margin-top:8px;">添加后即可生成海报 · 分享赚虾点</p>';
+      }
+    })
+    .catch(() => {
+      document.getElementById('statsTitle').textContent = '获取失败';
+      document.getElementById('statsContent').innerHTML = '<p style="font-size:13px;color:#999;text-align:center;">请稍后重试</p>';
+    });
+} else if (isWechat) {
+  window.location.href = 'https://ai.pangoozn.com/api/auth/wechat-redirect?target=/promo';
+} else {
+  document.getElementById('nonWechat').style.display = 'block';
+}
+
+function copyLink(el) {
+  const text = el.textContent.trim();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      el.style.background = '#e8f5e0';
+      setTimeout(() => el.style.background = '#f5f0e8', 1500);
+    });
+  }
+}
+</script>
+</body>
+</html>

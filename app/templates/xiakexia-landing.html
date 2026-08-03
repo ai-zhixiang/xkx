@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>享客虾 — 微信里养只虾🦞</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:#f5f0e8;min-height:100vh;padding:0 16px 60px}
+.hero{text-align:center;padding:48px 0 32px}
+.hero-icon{font-size:64px;margin-bottom:12px}
+.hero h1{font-size:32px;font-weight:800;color:#333;margin-bottom:6px}
+.hero .slogan{font-size:18px;color:#5B8C3E;font-weight:600;margin-bottom:8px}
+.hero .tagline{font-size:14px;color:#8a7a64;line-height:1.6}
+.hero .tagline em{font-style:normal;color:#5B8C3E;font-weight:600}
+.cta-wrap{text-align:center;margin:24px 0 32px}
+.cta-btn{display:inline-block;background:linear-gradient(135deg,#5B8C3E,#4a7a30);color:#fff;font-size:18px;font-weight:700;padding:16px 36px;border-radius:14px;text-decoration:none;box-shadow:0 4px 16px rgba(91,140,62,0.3);transition:all 0.2s}
+.cta-btn:active{transform:scale(0.96)}
+.cta-hint{font-size:12px;color:#999;margin-top:8px}
+.section-title{font-size:20px;font-weight:700;color:#333;text-align:center;margin:40px 0 20px}
+.section-title span{color:#5B8C3E}
+.features{display:flex;flex-direction:column;gap:12px;max-width:400px;margin:0 auto}
+.feature-card{background:#fffdf7;border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.05);display:flex;align-items:flex-start;gap:14px}
+.feature-icon{font-size:32px;flex-shrink:0;width:44px;text-align:center}
+.feature-info{flex:1}
+.feature-info h3{font-size:16px;font-weight:700;color:#333;margin-bottom:4px}
+.feature-info p{font-size:13px;color:#8a7a64;line-height:1.5}
+.feature-tag{display:inline-block;font-size:11px;color:#5B8C3E;background:rgba(91,140,62,0.1);padding:2px 8px;border-radius:6px;margin-top:4px}
+.pricing{display:flex;flex-wrap:wrap;gap:10px;max-width:400px;margin:0 auto}
+.price-card{background:#fffdf7;border-radius:14px;padding:18px 14px;box-shadow:0 2px 10px rgba(0,0,0,0.05);flex:1;min-width:calc(50% - 5px);text-align:center}
+.price-card.free{border:2px dashed #ddd}
+.price-card.popular{border:2px solid #5B8C3E;position:relative}
+.price-card.popular::before{content:'推荐';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#5B8C3E;color:#fff;font-size:10px;padding:2px 10px;border-radius:8px;font-weight:600}
+.price-card h4{font-size:13px;color:#666;margin-bottom:6px}
+.price-card .price{font-size:24px;font-weight:800;color:#333}
+.price-card .price small{font-size:12px;font-weight:400;color:#999}
+.price-card .desc{font-size:12px;color:#8a7a64;margin-top:6px}
+.steps{max-width:400px;margin:0 auto}
+.step{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px}
+.step-num{width:32px;height:32px;background:#5B8C3E;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
+.step-info{flex:1}
+.step-info h4{font-size:15px;font-weight:700;color:#333;margin-bottom:2px}
+.step-info p{font-size:13px;color:#8a7a64}
+.footer{text-align:center;padding:40px 0 20px;font-size:12px;color:#bbb}
+.footer .brand{font-size:14px;color:#8a7a64;margin-bottom:4px}
+.footer a{color:#999;text-decoration:none}
+.deco-leaf{position:fixed;font-size:48px;opacity:0.08;pointer-events:none;z-index:-1}
+.deco-leaf:nth-child(1){top:10%;left:5%;transform:rotate(-15deg)}
+.deco-leaf:nth-child(2){top:40%;right:3%;transform:rotate(25deg)}
+.deco-leaf:nth-child(3){bottom:15%;left:8%;transform:rotate(-40deg)}
+</style>
+</head>
+<body>
+<div class="deco-leaf">🪷</div>
+<div class="deco-leaf">🪴</div>
+<div class="deco-leaf">🌿</div>
+<div class="hero">
+  <div class="hero-icon">🦞</div>
+  <h1>享客虾</h1>
+  <div class="slogan">享客虾，虾客行</div>
+  <div class="tagline">微信里<em>养只虾</em>🦞<br>写歌·做卡·写笔记·查行情</div>
+</div>
+<div id="ref-banner" style="display:none;text-align:center;padding:10px 16px;margin:-16px 0 8px;background:linear-gradient(135deg,#e8f5e0,#f0f8ea);border-radius:12px;font-size:13px;color:#4a7a30;font-weight:600"></div>
+<div class="cta-wrap">
+  <a class="cta-btn" href="https://ai.pangoozn.com/xkx/bind" id="cta-btn">🤝 来养虾</a>
+  <div class="cta-hint">微信扫码 · 免费开养</div>
+</div>
+<div class="section-title">虾会什么 <span>·</span> 5个本事</div>
+<div class="features">
+  <div class="feature-card">
+    <div class="feature-icon">🎵</div>
+    <div class="feature-info">
+      <h3>AI写歌</h3>
+      <p>聊出你想唱的歌，AI帮你写成。十分钟一首，0.99元/首</p>
+      <span class="feature-tag">Suno MCP</span>
+    </div>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">💌</div>
+    <div class="feature-info">
+      <h3>AI嗨卡</h3>
+      <p>祝福+诗+配乐，做成电子贺卡。心意不走样</p>
+      <span class="feature-tag">AI嗨卡</span>
+    </div>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">📝</div>
+    <div class="feature-info">
+      <h3>小红书笔记</h3>
+      <p>AI陪你写笔记，怎么发都帮你搞定</p>
+      <span class="feature-tag">内容助手</span>
+    </div>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">📊</div>
+    <div class="feature-info">
+      <h3>量化信号</h3>
+      <p>四市行情+买卖信号，每天早上推给你</p>
+      <span class="feature-tag">每日推送</span>
+    </div>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">💬</div>
+    <div class="feature-info">
+      <h3>智能聊天</h3>
+      <p>日常问答、查资料、闲聊，想聊就聊</p>
+      <span class="feature-tag">AI对话</span>
+    </div>
+  </div>
+</div>
+<div class="section-title">怎么养</div>
+<div class="steps">
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-info"><h4>添加享客虾</h4><p>微信扫码，添加享客虾为好友</p></div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-info"><h4>发语音</h4><p>不用打字，直接说话就行</p></div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-info"><h4>虾帮你搞定</h4><p>写歌、做卡、写笔记，说一声就行</p></div>
+  </div>
+</div>
+<div class="section-title">养虾费用</div>
+<div class="pricing">
+  <div class="price-card free">
+    <h4>尝鲜</h4>
+    <div class="price">0<small>元</small></div>
+    <div class="desc">免费养3次<br>写歌/做卡随便试</div>
+  </div>
+  <div class="price-card">
+    <h4>单次</h4>
+    <div class="price">0.99<small>元</small></div>
+    <div class="desc">一歌一卡<br>想用就用</div>
+  </div>
+  <div class="price-card popular">
+    <h4>月卡</h4>
+    <div class="price">99<small>元/月</small></div>
+    <div class="desc">创作自由<br>优先响应</div>
+  </div>
+  <div class="price-card">
+    <h4>年卡</h4>
+    <div class="price">999<small>元/年</small></div>
+    <div class="desc">全年不限<br>折合83元/月</div>
+  </div>
+</div>
+<div class="promo-links" style="text-align:center;padding:16px 0 4px;font-size:13px;color:#aaa;border-top:1px solid rgba(0,0,0,0.04)">
+  <a href="/promo/referral?code=XKAJRGW6QG" style="color:#5B8C3E;font-weight:600;text-decoration:none">🦞 邀请好友 得虾点</a> ·
+  📢 推广素材：
+  <a href="/promo/poster-brand" style="color:#5B8C3E;text-decoration:none">品牌海报</a> ·
+  <a href="/promo/poster-music" style="color:#5B8C3E;text-decoration:none">写歌海报</a> ·
+  <a href="/promo/poster-member" style="color:#5B8C3E;text-decoration:none">会员海报</a> ·
+  <a href="/promo/one-pager" style="color:#5B8C3E;text-decoration:none">功能一页纸</a> ·
+  <a href="/promo/recommend" style="color:#5B8C3E;text-decoration:none">推荐语模板</a>
+</div>
+<div class="footer">
+  <div class="brand">🦞 享客虾，虾客行</div>
+  中铭科技控股（深圳）有限公司<br>
+  <a href="https://beian.miit.gov.cn">粤ICP备17101919号</a>
+</div>
+</body>
+<script>
+// ── 推广跟踪 ──
+(function(){
+  var ref = new URLSearchParams(window.location.search).get('ref');
+  if (ref && ref.length >= 6) {
+    localStorage.setItem('referral_code', ref);
+    // 验证推广码并显示推荐人
+    var banner = document.getElementById('ref-banner');
+    if (banner) {
+      banner.style.display = 'block';
+      banner.textContent = '🎁 验证推荐码…';
+      fetch('https://ai.pangoozn.com/api/referral/verify-code?code=' + encodeURIComponent(ref))
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          if (data.valid) {
+            banner.textContent = '🎁 由 ' + (data.nickname || '好友') + ' 推荐 · 开通享客虾双方得虾点';
+          } else {
+            banner.style.display = 'none';
+            localStorage.removeItem('referral_code');
+          }
+        })
+        .catch(function(){
+          banner.textContent = '🎁 推广链接已记录，开通享客虾享奖励';
+        });
+    }
+  }
+  // CTA 按钮带上推广码
+  var cta = document.getElementById('cta-btn');
+  var savedRef = localStorage.getItem('referral_code');
+  if (cta && savedRef) {
+    cta.href = 'https://ai.pangoozn.com/xkx/bind?ref=' + encodeURIComponent(savedRef);
+  }
+})();
+</script>
+</html>

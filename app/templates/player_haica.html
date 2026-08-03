@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>在微信里养只AI虾 · 享客虾播客</title>
+  <meta name="description" content="工作的事，聊着聊着就干了。享客虾播客 — AI创意伙伴，聊天就是创作" />
+  <meta property="og:image" content="https://ai.pangoozn.com/static/promo_v2_og.jpg" />
+  <meta property="og:image:secure_url" content="https://ai.pangoozn.com/static/promo_v2_og.jpg" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:title" content="工作的事，聊着聊着就干了 · 享客虾播客" />
+  <meta property="og:description" content="以前让写方案发呆半天，现在说句话就行。享客虾 — 聊天就是创作" />
+  <meta property="og:url" content="https://ai.pangoozn.com/player/promo-haica" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="享客虾" />
+<meta property="og:type" content="website" />
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e1a;color:#fff;font-family:system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.header{width:100%;padding:12px 16px;display:flex;align-items:center;max-width:800px}
+.header .brand{color:#ff7832;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.video-wrap{width:100%;max-width:800px;padding:0 12px}
+video{width:100%;border-radius:12px;background:#000;box-shadow:0 8px 40px rgba(255,120,50,0.15)}
+.meta{padding:16px 20px 0;max-width:800px;width:100%}
+.meta h1{font-size:20px;color:#fff;margin-bottom:6px;line-height:1.4}
+.meta p{font-size:13px;color:#7a8298;line-height:1.6}
+.meta .tags{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.meta .tags span{padding:3px 10px;border-radius:14px;background:rgba(255,120,50,0.12);color:#ff7832;font-size:11px}
+.bot-section{max-width:800px;width:100%;padding:24px 20px 32px}
+.bot-card{background:linear-gradient(135deg,#1a1e30 0%,#12162a 100%);border:1px solid rgba(255,120,50,0.2);border-radius:16px;padding:20px;text-align:center}
+.bot-card .icon{font-size:40px;margin-bottom:8px}
+.bot-card h2{font-size:17px;color:#fff;margin-bottom:4px}
+.bot-card .sub{font-size:12px;color:#7a8298;margin-bottom:14px}
+.bot-btn{display:inline-block;padding:12px 36px;border-radius:24px;background:#ff7832;color:#fff;font-size:15px;font-weight:600;border:none;cursor:pointer;text-decoration:none;transition:transform .15s,opacity .2s;-webkit-tap-highlight-color:transparent}
+.bot-btn:active{transform:scale(0.95);opacity:.8}
+.bot-card .referrer{font-size:11px;color:#555;margin-top:10px}
+.bot-card .referrer strong{color:#ff7832;font-weight:500}
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:12px}
+.loading .spinner{width:36px;height:36px;border:3px solid rgba(255,120,50,0.2);border-top-color:#ff7832;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading p{font-size:13px;color:#7a8298}
+.footer{font-size:11px;color:#444;padding:16px 20px 24px;text-align:center;max-width:800px}
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading">
+  <div class="spinner"></div>
+  <p>🦞 加载中…</p>
+</div>
+
+<div id="main-content" style="display:none">
+
+<div class="header">
+  <div class="brand">🦞 享客虾</div>
+</div>
+
+<div class="video-wrap">
+  <video id="player" controls playsinline poster="https://ai.pangoozn.com/static/og_promo_haica.jpg">
+    <source src="https://ai.pangoozn.com/static/promo_hd_v4.mp4" type="video/mp4">
+  </video>
+</div>
+
+<div class="meta">
+  <h1>在微信里养只AI虾 🦞</h1>
+  <p>写歌 · 做贺卡 · 写笔记 · 看行情 · 就是聊天这么简单</p>
+  <div class="tags">
+    <span>#AI创作</span>
+    <span>#享客虾</span>
+    <span>#漫画播客</span>
+  </div>
+</div>
+
+<div class="bot-section" id="botSection">
+  <div class="bot-card">
+    <div class="icon">🦞</div>
+    <h2>在微信里养只AI虾</h2>
+    <p class="sub">享客虾 · 聊天就是创作</p>
+    <div class="bot-btn" id="botBtn">👇 添加享客虾 Bot</div>
+    <div class="referrer" id="referrerInfo" style="display:none"></div>
+  </div>
+</div>
+
+<div class="footer">虾客行工作室 · 享客虾出品</div>
+
+</div>
+
+<script>
+(function(){
+  var loadingEl = document.getElementById('loading');
+  var mainEl = document.getElementById('main-content');
+  var botBtn = document.getElementById('botBtn');
+  var referrerInfo = document.getElementById('referrerInfo');
+
+  var isWeChat = /MicroMessenger/i.test(navigator.userAgent);
+
+  function getParam(name) {
+    var m = location.search.match(new RegExp('[?&]' + name + '=([^&]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
+  var ref = getParam('ref');
+  var token = getParam('token') || getParam('sync');
+  var openid = '';
+  var nickname = '';
+  function decodeToken(t) {
+    if (!t || t.length < 20) return false;
+    try {
+      var parts = t.split('.');
+      if (parts.length !== 3) return false;
+      var payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      var json = atob(payload);
+      var data = JSON.parse(json);
+      if (data.openid) openid = data.openid;
+      if (data.nickname) nickname = data.nickname;
+      return true;
+    } catch(e) { return false; }
+  }
+  if (token && !openid) decodeToken(token);
+
+  // ── 按钮点击跳转 ──
+  function bindBotClick(href) {
+    botBtn.onclick = function(e) {
+      if (href) {
+        location.href = href;
+      }
+    };
+    botBtn.style.cursor = 'pointer';
+  }
+
+  // ── 显示内容 ──
+  function showContent() {
+    loadingEl.style.display = 'none';
+    mainEl.style.display = 'block';
+  }
+
+  // ── 清理 URL ──
+  function cleanUrl(code) {
+    var clean = location.pathname;
+    if (code) clean += '?ref=' + encodeURIComponent(code);
+    window.history.replaceState({}, '', clean);
+  }
+
+  // ── 设置按钮和推广码 ──
+  function setupBot(code) {
+    var bindHref = code ? 'https://ai.pangoozn.com/xkx/bind?ref=' + encodeURIComponent(code) : 'https://ai.pangoozn.com/xkx/bind';
+    bindBotClick(bindHref);
+    if (code) {
+      referrerInfo.style.display = 'block';
+      referrerInfo.innerHTML = '推广码: <strong>' + code + '</strong>';
+    }
+  }
+
+  // ── 微信分享配置 ──
+  function setupWeChatShare(code) {
+    if (typeof wx === 'undefined' || !isWeChat) return;
+    var shareUrl = 'https://ai.pangoozn.com/player/promo-haica';
+    if (code) shareUrl += '?ref=' + encodeURIComponent(code);
+
+    fetch('/api/wechat/jsconfig?url=' + encodeURIComponent(location.href.split('#')[0]))
+      .then(function(r) { return r.json(); })
+      .then(function(cfg) {
+        if (cfg.errcode) return;
+        wx.config({
+          debug: false,
+          appId: cfg.appId,
+          timestamp: cfg.timestamp,
+          nonceStr: cfg.nonceStr,
+          signature: cfg.signature,
+          jsApiList: ['updateTimelineShareData', 'updateAppMessageShareData', 'onMenuShareTimeline', 'onMenuShareAppMessage']
+        });
+        wx.ready(function() {
+          var shareData = {
+            title: '在微信里养只AI虾 · 写歌做贺卡写笔记看行情',
+            desc: '享客虾 — AI创意伙伴。就是聊天这么简单',
+            link: shareUrl,
+            imgUrl: 'https://ai.pangoozn.com/static/og_promo_haica.jpg'
+          };
+          wx.updateTimelineShareData(shareData);
+          wx.updateAppMessageShareData(shareData);
+          try { wx.onMenuShareTimeline(shareData); } catch(e) {}
+          try { wx.onMenuShareAppMessage(shareData); } catch(e) {}
+        });
+      })
+      .catch(function() {});
+  }
+
+  // ═══════════════════════════════════
+  //  🔒 立即清理 URL：只保留 ?ref=xxx
+  // ═══════════════════════════════════
+  (function cleanUrlImmediate() {
+    var clean = location.pathname;
+    var ref = getParam('ref');
+    if (ref) clean += '?ref=' + encodeURIComponent(ref);
+    var curr = location.href.split('?')[0];
+    if (location.search) { var q = ref ? '?ref=' + ref : ''; curr += q; }
+    if (clean !== curr) { window.history.replaceState({}, '', clean); }
+  })();
+
+  // ═══════════════════════════════════
+  //  路由
+  // ═══════════════════════════════════
+
+  if (!isWeChat) {
+    // Non-WeChat: show QR code for scanning
+    showContent();
+    // Replace bot button with QR code
+    var qrLink = "https://ai.pangoozn.com/xkx/bind";
+    if (ref) qrLink += "?ref=" + encodeURIComponent(ref);
+    document.getElementById('botBtn').outerHTML =
+      '<div style="margin:16px 0"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' +
+      encodeURIComponent(qrLink) +
+      '" alt="微信扫码添加享客虾" style="width:180px;height:180px;border-radius:12px;background:#fff;padding:8px"></div>' +
+      '<div style="font-size:11px;color:#7a8298;margin-top:4px">📱 微信扫码 · 添加享客虾 Bot</div>';
+    return;
+  }
+
+  if (!openid) {
+    var oauthTarget = '/player/promo-haica';
+    if (ref) oauthTarget += '?ref=' + encodeURIComponent(ref);
+    location.href = '/api/auth/wechat-redirect?target=' + encodeURIComponent(oauthTarget) + '&source=player';
+    return;
+  }
+
+  var promoterRef = getParam('ref');
+
+  fetch('/api/referral/info?openid=' + encodeURIComponent(openid))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data && data.code) {
+        if (data.has_bot) {
+          setupBot(data.code);
+          setupWeChatShare(data.code);
+          cleanUrl(data.code);
+        } else {
+          var useCode = promoterRef || data.code;
+          setupBot(useCode);
+          setupWeChatShare(useCode);
+          cleanUrl(useCode);
+        }
+      } else {
+        setupBot(promoterRef || ''); cleanUrl(promoterRef || '');
+      }
+      showContent();
+    })
+    .catch(function() {
+      setupBot(promoterRef || ''); cleanUrl(promoterRef || '');
+      showContent();
+    });
+
+})();
+</script>
+
+  <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+</body>
+</html>

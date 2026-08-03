@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>享客虾 · 管理后台</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box }
+body { font-family:system-ui,-apple-system,sans-serif; background:#f5f0e8; color:#2c2c2c; min-height:100vh; -webkit-text-size-adjust:100% }
+.nav { background:#fff; border-bottom:1px solid #e0d8c8; padding:12px 24px; display:flex; align-items:center; gap:16px; position:sticky; top:0; z-index:100 }
+.nav h1 { font-size:17px; font-weight:700; color:#5B8C3E }
+.nav .sub { font-size:12px; color:#999; margin-left:auto }
+.nav a { font-size:13px; color:#5B8C3E; cursor:pointer; text-decoration:none; padding:4px 10px; border-radius:6px }
+.nav a:hover { background:#eaf5e0 }
+.container { max-width:1200px; margin:0 auto; padding:20px 24px 60px }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:24px }
+.stat-card { background:#fff; border-radius:12px; padding:16px; border:1px solid #e8e0d0 }
+.stat-card .num { font-size:28px; font-weight:700; color:#5B8C3E }
+.stat-card .label { font-size:12px; color:#888; margin-top:4px }
+.section { background:#fff; border-radius:12px; border:1px solid #e8e0d0; margin-bottom:20px; overflow:hidden }
+.section-title { padding:14px 16px; font-size:14px; font-weight:600; background:#faf8f2; border-bottom:1px solid #e8e0d0; display:flex; align-items:center; gap:8px }
+.section-body { padding:0; overflow-x:auto }
+table { width:100%; border-collapse:collapse; font-size:13px }
+th { text-align:left; padding:10px 12px; background:#faf8f2; color:#666; font-weight:600; font-size:11px; text-transform:uppercase; border-bottom:1px solid #e8e0d0; white-space:nowrap }
+td { padding:10px 12px; border-bottom:1px solid #f0ebe0; white-space:nowrap }
+tr:hover td { background:#faf8f2 }
+tr:last-child td { border-bottom:none }
+.avatar { width:28px; height:28px; border-radius:50%; vertical-align:middle; margin-right:6px }
+.badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600 }
+.badge-green { background:#e8f5e0; color:#3a7a2e }
+.badge-gray { background:#f0ebe0; color:#888 }
+.badge-red { background:#fde8e0; color:#c0392b }
+.badge-gold { background:#fef3d0; color:#b89230 }
+.tag { display:inline-block; padding:1px 6px; border-radius:4px; font-size:10px; background:#f0ebe0; color:#666; margin-right:4px }
+.search-bar { display:flex; gap:8px; padding:12px; border-bottom:1px solid #f0ebe0 }
+.search-bar input { flex:1; padding:8px 12px; border:1px solid #ddd; border-radius:8px; font-size:13px; outline:none }
+.search-bar input:focus { border-color:#5B8C3E }
+.btn { padding:8px 16px; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer }
+.btn-green { background:#5B8C3E; color:#fff }
+.btn-green:hover { background:#4a7a32 }
+.btn-sm { padding:4px 10px; font-size:12px }
+.btn-outline { background:transparent; border:1px solid #ddd; color:#666 }
+.btn-outline:hover { border-color:#5B8C3E; color:#5B8C3E }
+.empty { padding:24px; text-align:center; color:#aaa; font-size:13px }
+.detail { display:none; position:fixed; top:0; right:0; width:480px; max-width:100%; height:100vh; background:#fff; border-left:1px solid #e0d8c0; z-index:200; overflow-y:auto; box-shadow:-4px 0 20px rgba(0,0,0,.08) }
+.detail.open { display:block; animation:slideIn .2s ease-out }
+@keyframes slideIn { from { transform:translateX(100%) } to { transform:translateX(0) } }
+.detail-header { padding:16px; border-bottom:1px solid #f0ebe0; display:flex; align-items:center; gap:12px; position:sticky; top:0; background:#fff; z-index:1 }
+.detail-header h2 { font-size:15px; font-weight:600; flex:1 }
+.detail-close { font-size:20px; color:#999; cursor:pointer; padding:4px }
+.detail-close:hover { color:#333 }
+.detail-body { padding:16px }
+.detail-section { margin-bottom:16px }
+.detail-section h3 { font-size:13px; color:#666; margin-bottom:8px; font-weight:600 }
+.json-block { background:#faf8f2; border-radius:8px; padding:12px; font-family:monospace; font-size:11px; line-height:1.6; overflow-x:auto; white-space:pre-wrap; word-break:break-all }
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:10px 20px; border-radius:8px; font-size:13px; z-index:300; display:none; animation:fadeIn .2s ease-out }
+@keyframes fadeIn { from { opacity:0; transform:translateX(-50%) translateY(10px) } to { opacity:1; transform:translateX(-50%) translateY(0) } }
+.login-overlay {
+  position:fixed; top:0; left:0; right:0; bottom:0;
+  background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e8e0d0' fill-opacity='0.3'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  background-color:#f5f0e8;
+  display:flex; align-items:center; justify-content:center;
+  z-index:9999
+}
+.login-box {
+  background:#fff; border-radius:16px; padding:40px 36px 32px;
+  box-shadow:0 8px 40px rgba(0,0,0,.08);
+  width:340px; max-width:90vw;
+  text-align:center
+}
+.login-box .logo { font-size:48px; margin-bottom:8px }
+.login-box h2 { font-size:18px; color:#2c2c2c; margin-bottom:4px }
+.login-box p { font-size:13px; color:#999; margin-bottom:24px }
+.login-box input {
+  width:100%; padding:10px 14px; border:2px solid #e0d8c8; border-radius:10px;
+  font-size:16px; outline:none; text-align:center; letter-spacing:4px;
+  transition:border-color .2s
+}
+.login-box input:focus { border-color:#5B8C3E }
+.login-box .btn { margin-top:16px; width:100%; padding:12px; font-size:15px; letter-spacing:2px }
+.login-box .error { color:#c0392b; font-size:13px; margin-top:12px; display:none }
+.login-hint { font-size:11px; color:#ccc; margin-top:20px }
+@media (max-width:768px) {  .nav { padding:10px 12px; gap:10px; overflow-x:auto; -webkit-overflow-scrolling:touch }  .nav h1 { font-size:15px; white-space:nowrap }  .nav a { font-size:12px; padding:4px 8px; white-space:nowrap }  .container { padding:12px 10px 40px }  .stats { grid-template-columns:repeat(3,1fr); gap:6px }  .stat-card { padding:10px }  .stat-card .num { font-size:20px }  .stat-card .label { font-size:10px }  .section-title { font-size:13px; padding:10px 12px }  table { font-size:12px }  th, td { padding:6px 8px; white-space:nowrap }  .badge { font-size:10px; padding:1px 6px }  .tag { font-size:9px }  .search-bar { flex-wrap:wrap; gap:6px }  .search-bar input { font-size:14px; padding:8px 10px; min-width:0 }  .btn { padding:6px 12px; font-size:12px }  .btn-sm { padding:3px 8px; font-size:11px }  .detail { width:100%; max-width:100% }  .detail-body { padding:12px }  .json-block { font-size:10px; padding:8px }  .hide-mobile { display:none }  .login-box { padding:28px 20px 24px }  .login-box h2 { font-size:16px }  .login-box input { font-size:18px; padding:10px 12px }}@media (max-width:480px) {  .stats { grid-template-columns:repeat(2,1fr) }  table { font-size:11px }  th, td { padding:5px 6px }  .avatar { width:22px; height:22px }  .nav .sub { display:none }}
+</style>
+</head>
+<body>
+
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div class="logo">🦞</div>
+    <h2>享客虾 · 管理</h2>
+    <p>请输入管理密码</p>
+    <input type="password" id="pwdInput" placeholder="••••••" autocomplete="off"
+           onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn btn-green" onclick="doLogin()">进入后台</button>
+    <div class="error" id="loginError">密码错误</div>
+    <div class="login-hint">内部管理工具，非请勿入</div>
+  </div>
+</div>
+
+<div class="app-content" id="appContent">
+<div class="nav">
+  <h1>🦞 享客虾 · 管理</h1>
+  <a onclick="switchTab('bots')">Bot</a>
+  <a onclick="switchTab('users')">访客</a>
+  <a onclick="switchTab('push')">推送</a>
+  <span style="font-size:11px;color:#aaa;margin-left:8px" onclick="logout()" title="退出">🚪</span>
+  <span class="sub" id="navTime"></span>
+</div>
+
+<div class="container">
+
+<!-- Stats -->
+<div class="stats" id="statsRow"></div>
+
+<!-- Bot tab -->
+<div id="tabBots" class="tab-content" style="display:none">
+  <div class="section">
+    <div class="section-title">🤖 Bot 列表</div>
+    <div class="section-body">
+      <table><thead><tr>
+        <th>昵称</th><th>Bot ID</th><th>状态</th><th>会员</th><th>虾点(余额)</th><th>已耗</th><th>创建时间</th><th>平台</th><th>操作</th>
+      </tr></thead><tbody id="botsBody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- Users tab -->
+<div id="tabUsers" class="tab-content">
+  <div class="section">
+    <div class="section-title">👤 访客列表（OAuth 注册）</div>
+    <div class="search-bar">
+      <input id="userSearch" placeholder="搜索昵称或 openid..." onkeydown="if(event.key==='Enter')loadUsers()">
+      <button class="btn btn-green" onclick="loadUsers()">搜索</button>
+    </div>
+    <div class="section-body">
+      <table><thead><tr>
+        <th>用户</th><th>OpenID</th><th>状态</th><th>会员</th><th>推送</th><th>来源</th><th>推广码</th><th>绑定</th><th>创建时间</th><th>操作</th>
+      </tr></thead><tbody id="usersBody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- Push tab -->
+<div id="tabPush" class="tab-content" style="display:none">
+  <div class="section">
+    <div class="section-title">📢 测试推送</div>
+    <div class="section-body" style="padding:16px">
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">OpenID</label>
+        <input id="pushOpenid" placeholder="输入用户 openid" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">推送内容</label>
+        <textarea id="pushText" rows="3" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;resize:vertical">🦞 这是来自管理后台的测试消息</textarea>
+      </div>
+      <button class="btn btn-green" onclick="doPush()">📤 推送</button>
+      <span id="pushResult" style="margin-left:12px;font-size:12px;color:#888"></span>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- User detail panel -->
+<div class="detail" id="detailPanel">
+  <div class="detail-header">
+    <h2 id="detailTitle">用户详情</h2>
+    <span class="detail-close" onclick="closeDetail()">✕</span>
+  </div>
+  <div class="detail-body" id="detailBody"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+</div>
+
+<script>
+const API = '/api/admin';
+let activeTab = 'users';
+let currentFilter = '';
+
+function $(id) { return document.getElementById(id) }
+
+function doLogin() {
+  var pwd = $('pwdInput').value;
+  if (!pwd) return;
+  $('loginError').style.display = 'none';
+  fetch(API + '/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({password: pwd})
+  })
+  .then(function(r) { return r.json() })
+  .then(function(d) {
+    if (d.ok) {
+      sessionStorage.setItem('admin_verified', '1');
+      $('loginOverlay').style.display = 'none';
+      $('appContent').style.display = 'block';
+      init();
+    } else {
+      $('loginError').textContent = d.error || '密码错误';
+      $('loginError').style.display = 'block';
+    }
+  })
+  .catch(function() {
+    $('loginError').textContent = '验证请求失败';
+    $('loginError').style.display = 'block';
+  });
+}
+
+function logout() {
+  sessionStorage.removeItem('admin_verified');
+  location.reload();
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none' });
+  $('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).style.display = 'block';
+  if (tab === 'bots') loadBots();
+  if (tab === 'users') loadUsers();
+}
+
+function toast(msg) {
+  var el = $('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(function(){ el.style.display = 'none' }, 3000);
+}
+
+function loadStats() {
+  fetch(API + '/stats')
+    .then(function(r) { return r.json() })
+    .then(function(d) {
+      // Funnel cards — OAuth -> Bot -> 已互动 -> 会员
+      var rate_btv = d.oauth_count > 0
+        ? Math.round(d.bot_user_count / d.oauth_count * 100) : 0;
+      var rate_act = d.bot_user_count > 0
+        ? Math.round(d.interactive_count / d.bot_user_count * 100) : 0;
+      var rate_mem = d.interactive_count > 0
+        ? Math.round(d.member_subscribers / d.interactive_count * 100) : 0;
+
+      var originHtml = '';
+      if (d.origin_stats && d.origin_stats.length) {
+        originHtml = '<div class="section-title" style="margin:16px 0 8px">📊 总来源 TOP</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">';
+        d.origin_stats.forEach(function(o) {
+          originHtml += '<span class="tag" style="background:#fff;border:1px solid #ddd;padding:4px 10px;border-radius:6px;font-size:12px">' + (o.origin || '直接') + ' <b>' + o.cnt + '</b></span> ';
+        });
+        originHtml += '</div>';
+      }
+
+      $('statsRow').innerHTML =
+        '<div class="stat-card" style="border-left:3px solid #5B8C3E;cursor:pointer" onclick="filterUsers(0)"><div class="num">' + d.oauth_count + '</div><div class="label">📋 OAuth<br><span style="font-size:11px;color:#999">授权总数</span></div></div>' +
+        '<div class="stat-card" style="border-left:3px solid #3A7BD5;cursor:pointer" onclick="filterUsers(1)"><div class="num">' + d.bot_user_count + '</div><div class="label">🤖 Bot<br><span style="font-size:11px;color:#5B8C3E">转化率 ' + rate_btv + '%</span></div></div>' +
+        '<div class="stat-card" style="border-left:3px solid #E67E22;cursor:pointer" onclick="filterUsers(2)"><div class="num">' + d.interactive_count + '</div><div class="label">⚡ 已互动<br><span style="font-size:11px;color:' + (rate_act < 50 ? '#E74C3C' : '#5B8C3E') + '">互动率 ' + rate_act + '%</span></div></div>' +
+        '<div class="stat-card" style="border-left:3px solid #F1C40F;cursor:pointer" onclick="filterUsers(3)"><div class="num">' + d.member_subscribers + '</div><div class="label">🏆 会员<br><span style="font-size:11px;color:#999">转化率 ' + rate_mem + '%</span></div></div>' +
+        '<div class="stat-card" style="border-left:3px solid #999;cursor:pointer" onclick="filterUsers(4)"><div class="num">' + d.today_new_subs + '</div><div class="label">📌 今日新增</div></div>' +
+        originHtml;
+    })
+    .catch(function(){});
+}
+
+function loadBots() {
+  fetch(API + '/bots')
+    .then(function(r) { return r.json() })
+    .then(function(d) {
+      var html = '';
+      d.bots.forEach(function(b) {
+        var status = b.is_active ? '<span class="badge badge-green">● 在线</span>' : '<span class="badge badge-gray">● 离线</span>';
+        var member = b.member ? '<span class="badge badge-gold">√会员</span>' : '<span class="badge badge-gray">-</span>';
+        var pts = b.total_points > 0 ? '<span>' + b.total_points + '</span>' : '<span style="color:#ccc">0</span>';
+        var cpt = b.consumed_points > 0 ? '<span style="color:#999">' + b.consumed_points + '</span>' : '<span style="color:#ddd">0</span>';
+        var created = b.created_at ? b.created_at.substring(0, 16).replace('T', ' ') : '';
+        html += '<tr><td>' + esc(b.nickname) + '</td><td style="font-size:11px;color:#888">' + esc(b.bot_id) + '</td><td>' + status + '</td><td>' + member + '</td><td>' + pts + '</td><td>' + cpt + '</td><td style="font-size:11px;color:#888">' + created + '</td><td><span class="tag">' + esc(b.platform) + '</span></td><td style="white-space:nowrap"><button class="btn btn-sm btn-outline" onclick="showUser(\'' + esc(b.user_id) + '\')">查用户</button> <button class="btn btn-sm btn-green" onclick="gotoPush(\'' + esc(b.openid || '') + '\',\'' + esc(b.nickname) + '\')">推送</button></td></tr>';
+      });
+      $('botsBody').innerHTML = html || '<tr><td colspan="9" class="empty">暂无 Bot</td></tr>';
+    })
+    .catch(function(){ toast('加载 Bot 列表失败') });
+}
+
+function filterUsers(idx) { var filters=["oauth","bot","interactive","member","today"]; var filter=filters[idx];
+  currentFilter = filter;
+  switchTab('users');
+  document.querySelectorAll('.stat-card').forEach(function(el, i) {
+    el.style.borderLeftWidth = (['oauth','bot','interactive','member','today'][i] === filter) ? '5px' : '3px';
+  });
+}
+
+function loadUsers() {
+  var q = $('userSearch').value.trim();
+  var url = API + '/subscribers' + (q ? '?q=' + encodeURIComponent(q) : '');
+  fetch(url)
+    .then(function(r) { return r.json() })
+    .then(function(d) {
+      var html = '';
+      var fl = d.subscribers;
+  if (currentFilter === 'bot') fl = fl.filter(function(u){return u.has_bot;});
+  else if (currentFilter === 'interactive') fl = fl.filter(function(u){return u.total_points_consumed > 0;});
+  else if (currentFilter === 'member') fl = fl.filter(function(u){return u.plan_id>0 && u.status==='ACTIVE';});
+  var flabel = {'oauth':'OAuth','bot':'Bot','interactive':'已互动','member':'会员','today':'今日新增'};
+  var ftitle = currentFilter ? '<div style="padding:8px 12px;font-size:12px;color:#5B8C3E;background:#f0f7f0;border-bottom:1px solid #e8e0d0">🔍 <b>'+(flabel[currentFilter]||currentFilter)+'</b> 共 '+fl.length+' 条 <a onclick="currentFilter=\'\';loadUsers()" style="color:#999;cursor:pointer;margin-left:8px">✕ 清除</a></div>' : '';
+  $('usersBody').innerHTML = ftitle;
+  if (fl.length === 0) {
+    $('usersBody').innerHTML = ftitle + '<tr><td colspan="10" class="empty">'+(currentFilter?'无匹配用户':'无数据')+'</td></tr>';
+  } else {
+    var tableHtml = '<table><thead><tr><th>用户</th><th>OpenID</th><th>状态</th><th>会员</th><th>推送</th><th>来源</th><th>推广码</th><th>绑定</th><th>创建时间</th><th>操作</th></tr></thead><tbody>';
+    fl.forEach(function(u) {
+        var avatar = u.avatar_url ? '<img class="avatar" src="' + u.avatar_url + '">' : '<span class="avatar" style="display:inline-flex;align-items:center;justify-content:center;background:#5B8C3E;color:#fff;font-size:12px;font-weight:700;border-radius:50%">虾</span>';
+        var status = u.has_bot ? '<span class="badge badge-green">虾友</span>' : '<span class="badge badge-gray">访客</span>';
+        var member = u.plan_id > 0 && u.status === 'ACTIVE' ? '<span class="badge badge-gold">√会员</span>' : '<span class="badge badge-gray">-</span>';
+        var push = u.daily_push ? '<span style="color:#5B8C3E">✓</span>' : '<span style="color:#ccc">-</span>';
+        var bind = u.phone ? '<span style="color:#5B8C3E">已绑</span>' : '<span style="color:#ccc">未绑定</span>';
+        var created = u.created_at ? u.created_at.substring(0, 10) : '-';
+        tableHtml += '<tr><td>' + avatar + esc(u.nickname) + '</td><td style="font-size:11px;color:#888;max-width:120px;overflow:hidden;text-overflow:ellipsis">' + esc(u.openid) + '</td><td>' + status + '</td><td>' + member + '</td><td>' + push + '</td><td><span class="tag">' + esc(u.origin || '直接') + '</span></td><td style="font-size:11px;color:#888">' + esc(u.referral_code) + '</td><td>' + bind + '</td><td style="font-size:11px;color:#888">' + created + '</td><td><button class="btn btn-sm btn-outline" onclick="showUser(\'' + esc(u.openid) + '\')">详情</button></td></tr>';
+    });
+    tableHtml += '</tbody></table>';
+    $('usersBody').innerHTML = ftitle + tableHtml;
+  }
+    })
+    .catch(function(){ toast('加载失败') });
+}
+
+function showUser(id) {
+  fetch(API + '/user/' + encodeURIComponent(id))
+    .then(function(r) { return r.json() })
+    .then(function(d) {
+      $('detailTitle').textContent = '用户详情';
+      var html = '';
+      if (d.subscriber) {
+        html += '<div class="detail-section"><h3>基本信息</h3><div class="json-block">' + JSON.stringify(d.subscriber, null, 2) + '</div></div>';
+      }
+      if (d.channel_bindings && d.channel_bindings.length) {
+        html += '<div class="detail-section"><h3>通道绑定</h3><div class="json-block">' + JSON.stringify(d.channel_bindings, null, 2) + '</div></div>';
+      }
+      if (d.bots && d.bots.length) {
+        html += '<div class="detail-section"><h3>Bot</h3><div class="json-block">' + JSON.stringify(d.bots, null, 2) + '</div></div>';
+      }
+      $('detailBody').innerHTML = html;
+      $('detailPanel').classList.add('open');
+    })
+    .catch(function(){ toast('加载详情失败') });
+}
+
+function closeDetail() {
+  $('detailPanel').classList.remove('open');
+}
+
+function gotoPush(openid, nickname) {
+  if (!openid) { toast('该 Bot 未绑定 openid，无法推送'); return; }
+  $('pushOpenid').value = openid;
+  $('pushResult').textContent = '';
+  switchTab('push');
+  $('pushText').focus();
+  toast('推送目标：' + (nickname || openid));
+}
+
+function doPush() {
+  var openid = $('pushOpenid').value.trim();
+  var text = $('pushText').value.trim();
+  if (!openid) { toast('请输入 OpenID'); return; }
+  $('pushResult').textContent = '发送中...';
+  fetch(API + '/push', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({openid: openid, text: text})
+  })
+  .then(function(r) { return r.json() })
+  .then(function(d) {
+    $('pushResult').textContent = d.ok ? '✅ 发送成功' : '❌ ' + (d.error || '失败');
+  })
+  .catch(function(){ $('pushResult').textContent = '❌ 请求失败' });
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function init() {
+  loadStats();
+  loadBots();
+  loadUsers(); switchTab(activeTab);
+  var now = new Date();
+  $('navTime').textContent = now.getFullYear() + '/' + (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds();
+  setInterval(function(){
+    var n = new Date();
+    $('navTime').textContent = n.getFullYear() + '/' + (n.getMonth()+1) + '/' + n.getDate() + ' ' + n.getHours() + ':' + n.getMinutes() + ':' + n.getSeconds();
+  }, 1000);
+}
+
+// Auto-init if already logged in
+if (sessionStorage.getItem('admin_verified')) {
+  $('loginOverlay').style.display = 'none';
+  $('appContent').style.display = 'block';
+  init();
+}
+</script>
+</body>
+</html>
